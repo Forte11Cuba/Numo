@@ -1,4 +1,4 @@
-package com.example.satocash;
+package com.example.shellshock;
 
 import android.nfc.cardemulation.HostApduService;
 import android.os.Bundle;
