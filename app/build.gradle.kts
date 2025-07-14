@@ -37,6 +37,8 @@ android {
     buildFeatures {
         compose = true
     }
+
+    useLibrary("org.apache.http.legacy")
 }
 
 dependencies {
@@ -49,7 +51,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.firebase.crashlytics.buildtools)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -59,4 +60,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.bcprov.jdk15on)
     implementation(files("libs/cashu-java-sdk-1.0-SNAPSHOT.jar"))
+    implementation("com.squareup.okhttp3:okhttp:4.12.0") // Check for the latest version
 }

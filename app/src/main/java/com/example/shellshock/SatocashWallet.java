@@ -26,10 +26,8 @@ import com.cashujdk.nut03.PostSwapRequest;
 import com.cashujdk.nut03.PostSwapResponse;
 import com.cashujdk.utils.Pair;
 import com.cashujdk.utils.ProofSelector;
-import com.google.firebase.crashlytics.buildtools.reloc.org.apache.http.client.HttpClient;
 
 import org.bouncycastle.math.ec.ECPoint;
-
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -41,9 +39,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.net.http.HttpClient;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import okhttp3.OkHttpClient;
 
 public class SatocashWallet {
     private final SatocashNfcClient cardClient;
@@ -78,7 +77,7 @@ public class SatocashWallet {
                 mintUrl = cardClient.exportMint(0);
 
                 // Step 2. Get mint keysets
-                CashuHttpClient cashuHttpClient = new CashuHttpClient(new HttpClient(), mintUrl);
+                CashuHttpClient cashuHttpClient = new CashuHttpClient(new OkHttpClient(), mintUrl);
                 CompletableFuture<GetKeysetsResponse> keysetsFuture = cashuHttpClient.getKeysets();
 
                 // Step 3. Get information about the proofs in the card
@@ -169,10 +168,10 @@ public class SatocashWallet {
                             ISecret secret = StringSecret.random();
                             BigInteger blindingFactor = generateRandomScalar();
                             BlindedMessage blindedMessage = new BlindedMessage(
-                                    new BigInteger(String.valueOf(output)),
+                                    output,
                                     selectedKeysetId,
-                                    computeB_(hashToCurve(secret.getBytes()), blindingFactor),
-                                    Optional.empty()
+                                    pointToHex(computeB_(hashToCurve(secret.getBytes()), blindingFactor), true),
+                                    ""
                             );
                             return new Pair<>(blindedMessage, new Pair<>(secret, blindingFactor));
                         })
@@ -241,10 +240,10 @@ public class SatocashWallet {
             BigInteger blindingFactor = blindingFactors.get(i);
             ISecret secret = secrets.get(i);
 
-            ECPoint key = hexToPoint(keyset.keys.get(signature.amount));
+            ECPoint key = hexToPoint(keyset.keys.get(BigInteger.valueOf(signature.amount)));
             ECPoint C = computeC(signature.getC_(), blindingFactor, key);
 
-            result.add(new Proof(signature.amount.longValue(), signature.keysetId, secret, C, Optional.empty(), Optional.empty()));
+            result.add(new Proof(signature.amount, signature.keysetId, secret, C, Optional.empty(), Optional.empty()));
         }
         return result;
     }
