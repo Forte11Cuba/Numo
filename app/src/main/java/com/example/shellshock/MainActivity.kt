@@ -7,6 +7,7 @@ import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Bundle
 import android.util.Log
+import android.view.View // Import View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -25,6 +26,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 class MainActivity : ComponentActivity() {
     private val TAG = "com.example.shellshock.MainActivity"
     private lateinit var textView: TextView
+    private lateinit var nfcScanHint: TextView // Declare nfcScanHint
     private var nfcAdapter: NfcAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,10 +37,12 @@ class MainActivity : ComponentActivity() {
 
         // Find UI components
         textView = findViewById(R.id.textView)
+        nfcScanHint = findViewById(R.id.nfc_scan_hint) // Initialize nfcScanHint
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter == null) {
             textView.text = "NFC is not available on this device."
+            nfcScanHint.visibility = View.GONE // Hide hint if NFC is not available
             return
         }
 
@@ -63,6 +67,9 @@ class MainActivity : ComponentActivity() {
             it.enableForegroundDispatch(this, pendingIntent, null, techLists)
             Log.d(TAG, "Foreground dispatch enabled.")
         }
+        // Ensure hint is visible when resuming if no card is present
+        nfcScanHint.visibility = View.VISIBLE
+        textView.text = "" // Clear previous card info
     }
 
     override fun onPause() {
@@ -83,6 +90,9 @@ class MainActivity : ComponentActivity() {
     private fun handleNfcIntent(intent: Intent) {
         val tag: Tag? = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
         if (tag != null) {
+            // Hide the hint when a card is detected
+            nfcScanHint.visibility = View.GONE
+
             textView.text = "NFC Tag discovered: ${tag.id?.toHexString()}"
             Log.d(TAG, "NFC Tag discovered: ${tag.id?.toHexString()}")
 
@@ -108,7 +118,7 @@ class MainActivity : ComponentActivity() {
                     // 2. Initialize Secure Channel
                     satocashClient.initSecureChannel()
                     withContext(Dispatchers.Main) {
-                        textView.text = "Secure Channel Initialized!"
+                        textView.append("\nSecure Channel Initialized!")
                     }
                     Log.d(TAG, "Secure Channel Initialized.")
 
@@ -194,6 +204,10 @@ class MainActivity : ComponentActivity() {
                         satocashClient?.close()
                     } catch (e: IOException) {
                         Log.e(TAG, "Error closing IsoDep connection: ${e.message}", e)
+                    }
+                    // Show the hint again when the card interaction is finished or an error occurred
+                    withContext(Dispatchers.Main) {
+                        nfcScanHint.visibility = View.VISIBLE
                     }
                 }
             }
