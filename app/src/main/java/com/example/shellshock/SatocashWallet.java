@@ -229,7 +229,7 @@ public class SatocashWallet {
                 // Import changeProofs to card
                 Map<String, Integer> keysetIdsToIndices = transposeMap(keysetIndicesToIds);
                 importProofs(changeProofs, keysetIdsToIndices);
-                return new Token(receiveProofs, mintUrl).encode();
+                return new Token(receiveProofs, "SAT", mintUrl).encode();
             } catch (SatocashNfcClient.SatocashException | IOException e) {
                 throw new RuntimeException(e);
             } catch (Exception e) {
