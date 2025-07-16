@@ -298,6 +298,8 @@ public class ModernPOSActivity extends AppCompatActivity {
         requestedAmount = 0;
         currentInput.setLength(0);
 
+        Log.d(TAG, "Payment successful! Token: " + token);
+
         mainHandler.post(() -> {
             if (nfcDialog != null && nfcDialog.isShowing()) {
                 nfcDialog.dismiss();
