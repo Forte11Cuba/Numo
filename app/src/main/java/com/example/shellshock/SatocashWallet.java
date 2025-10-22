@@ -50,16 +50,19 @@ public class SatocashWallet {
 
     public CompletableFuture<String> getPayment(long amount, String unit) {
         return CompletableFuture.supplyAsync(() -> {
-            if (!authenticated) {
-                throw new RuntimeException("Not authenticated");
-            }
-
             try {
                 int mintIndex = 0;
                 while (true) {
                     // Step 1. Get mint
                     String mintUrl;
                     mintUrl = cardClient.exportMint(mintIndex);
+                    if (mintUrl == null) {
+                        if (mintIndex >= SATOCASH_MAX_MINTS-1) {
+                            throw new RuntimeException("Empty selection: not enough funds");
+                        }
+                        ++mintIndex;
+                        continue;
+                    }
                     Log.d(TAG, "Got mint URL: " + mintUrl);
 
                     // Step 2. Get mint keysets
@@ -240,8 +243,9 @@ public class SatocashWallet {
                     importProofs(changeProofs, mintUrl, unit, keysetIdsToIndices);
                     return new Token(receiveProofs, "sat", mintUrl).encode();
                 }
-                
-            } catch (SatocashNfcClient.SatocashException | IOException e) {
+            } catch (SatocashNfcClient.SatocashException e) {
+                throw e;
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -353,10 +357,14 @@ public class SatocashWallet {
     }
 
     private int findMintIndex(String mint) throws SatocashNfcClient.SatocashException {
+        if (mint == null) {
+            throw new RuntimeException("Invalid mint URL: null");
+        }
+        
         int i;
         for (i = 0; i < 16; ++i) {
             String exportedMint = cardClient.exportMint(i);
-            if (mint.equals(exportedMint)) {
+            if (exportedMint != null && exportedMint.equals(mint)) {
                 break;
             }
         }

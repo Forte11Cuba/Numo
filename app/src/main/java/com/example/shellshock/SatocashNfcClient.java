@@ -184,7 +184,7 @@ public class SatocashNfcClient {
         }
     }
 
-    public static class SatocashException extends Exception {
+    public static class SatocashException extends RuntimeException {
         private final int sw;
 
         public SatocashException(String message, int sw) {
