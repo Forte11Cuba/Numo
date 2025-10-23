@@ -26,6 +26,8 @@
         android:hint="Enter Cashu Proof Token"
         android:textColorHint="@color/textColorPrimary"
         app:hintTextColor="@color/textColorPrimary"
+        app:boxStrokeColor="@color/text_input_box_stroke"
+        app:boxStrokeWidth="2dp"
         app:layout_constraintBottom_toTopOf="@+id/top_up_submit_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
