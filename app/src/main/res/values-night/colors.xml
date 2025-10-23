@@ -12,4 +12,9 @@
     <color name="dark_keypadButtonPressedColor">#2D2D2D</color>
     <color name="dark_keypadButtonTextColor">#FFFFFF</color>
     <color name="dark_inputBoxStrokeColor">#FFFFFF</color>
+    
+    <!-- Action buttons in dark mode -->
+    <color name="dark_buttonBackground">#BB86FC</color>
+    <color name="dark_buttonText">#000000</color>
+    <color name="dark_iconTint">#BB86FC</color>
 </resources>
