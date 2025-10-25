@@ -164,14 +164,24 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
 
     private void openTokenWithApp(String token) {
         String cashuUri = "cashu:" + token;
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(cashuUri));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         
-        // Check if there's an app that can handle this URI
-        if (intent.resolveActivity(getPackageManager()) != null) {
-            startActivity(intent);
-        } else {
-            Toast.makeText(this, "No app found to handle cashu: links", Toast.LENGTH_SHORT).show();
+        // Create intent for viewing the URI
+        Intent uriIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(cashuUri));
+        uriIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        // Create a fallback intent for sharing as text
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, cashuUri);
+        
+        // Combine both intents into a chooser
+        Intent chooserIntent = Intent.createChooser(shareIntent, "Open token with...");
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { uriIntent });
+        
+        try {
+            startActivity(chooserIntent);
+        } catch (Exception e) {
+            Toast.makeText(this, "No apps available to handle this token", Toast.LENGTH_SHORT).show();
         }
     }
 
