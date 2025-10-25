@@ -185,8 +185,8 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         shareIntent.putExtra(Intent.EXTRA_TEXT, cashuUri);
         
         // Combine both intents into a chooser
-        Intent chooserIntent = Intent.createChooser(shareIntent, "Open token with...");
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { uriIntent });
+        Intent chooserIntent = Intent.createChooser(uriIntent, "Open token with...");
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { shareIntent });
         
         try {
             startActivity(chooserIntent);

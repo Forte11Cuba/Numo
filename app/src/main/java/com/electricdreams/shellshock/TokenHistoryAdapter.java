@@ -83,8 +83,8 @@ public class TokenHistoryAdapter extends RecyclerView.Adapter<TokenHistoryAdapte
         shareIntent.putExtra(Intent.EXTRA_TEXT, cashuUri);
         
         // Combine both intents into a chooser
-        Intent chooserIntent = Intent.createChooser(shareIntent, "Open token with...");
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { uriIntent });
+        Intent chooserIntent = Intent.createChooser(uriIntent, "Open token with...");
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { shareIntent });
         
         try {
             context.startActivity(chooserIntent);
