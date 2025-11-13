@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
@@ -26,7 +27,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ScrollView;
+import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -51,19 +52,24 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
     private static final String KEY_NIGHT_MODE = "nightMode";
     
     private TextView amountDisplay;
+    private TextView fiatAmountDisplay;
     private Button submitButton;
     private StringBuilder currentInput = new StringBuilder();
     private AlertDialog nfcDialog;
     private AlertDialog paymentMethodDialog;
     private TextView tokenDisplay;
-    private Button copyTokenButton;
     private Button openWithButton;
     private Button resetButton;
-    private ScrollView tokenScrollContainer;
+    private ImageButton switchCurrencyButton;
+    private FrameLayout tokenScrollContainer;
     private LinearLayout tokenActionsContainer;
     private ConstraintLayout inputModeContainer;
     private NfcAdapter nfcAdapter;
     private SatocashNfcClient satocashClient;
+    private BitcoinPriceWorker bitcoinPriceWorker;
+    
+    // Flag to indicate if we're in USD input mode
+    private boolean isUsdInputMode = false;
 
     // Store PIN for re-scan flow
     private String savedPin = null;
@@ -103,15 +109,32 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
 
         // Find all views
         amountDisplay = findViewById(R.id.amount_display);
+        fiatAmountDisplay = findViewById(R.id.fiat_amount_display);
         submitButton = findViewById(R.id.submit_button);
         GridLayout keypad = findViewById(R.id.keypad);
         tokenDisplay = findViewById(R.id.token_display);
-        copyTokenButton = findViewById(R.id.copy_token_button);
         openWithButton = findViewById(R.id.open_with_button);
         resetButton = findViewById(R.id.reset_button);
+        switchCurrencyButton = findViewById(R.id.currency_switch_button);
         tokenScrollContainer = findViewById(R.id.token_scroll_container);
         tokenActionsContainer = findViewById(R.id.token_actions_container);
         inputModeContainer = findViewById(R.id.input_mode_container);
+
+        // Initialize bitcoin price worker
+        bitcoinPriceWorker = BitcoinPriceWorker.getInstance(this);
+        bitcoinPriceWorker.setPriceUpdateListener(price -> updateDisplay());
+        bitcoinPriceWorker.start();
+        
+        // Set up currency switch button
+        switchCurrencyButton.setOnClickListener(v -> toggleInputMode());
+
+        // Set up token display click listener to copy token to clipboard
+        tokenDisplay.setOnClickListener(v -> {
+            String token = tokenDisplay.getText().toString();
+            if (!token.isEmpty() && !token.startsWith("Error:")) {
+                copyTokenToClipboard(token);
+            }
+        });
 
         // Set up bottom navigation
         ImageButton topUpButton = findViewById(R.id.action_top_up);
@@ -161,13 +184,6 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             }
         });
 
-        copyTokenButton.setOnClickListener(v -> {
-            String token = tokenDisplay.getText().toString();
-            if (!token.isEmpty() && !token.startsWith("Error:")) {
-                copyTokenToClipboard(token);
-            }
-        });
-
         openWithButton.setOnClickListener(v -> {
             String token = tokenDisplay.getText().toString();
             if (!token.isEmpty() && !token.startsWith("Error:")) {
@@ -214,7 +230,6 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         tokenDisplay.setText("");
         
         // Reset buttons
-        copyTokenButton.setVisibility(View.GONE);
         openWithButton.setVisibility(View.GONE);
         
         // Reset PIN flow state
@@ -236,7 +251,6 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         tokenScrollContainer.setVisibility(View.VISIBLE);
         tokenActionsContainer.setVisibility(View.VISIBLE);
         tokenDisplay.setVisibility(View.VISIBLE);
-        copyTokenButton.setVisibility(View.VISIBLE);
         openWithButton.setVisibility(View.VISIBLE);
     }
 
@@ -245,6 +259,29 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         ClipData clip = ClipData.newPlainText("Cashu Token", token);
         clipboard.setPrimaryClip(clip);
         Toast.makeText(this, "Token copied to clipboard", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void toggleInputMode() {
+        // Toggle between sats and USD input mode
+        isUsdInputMode = !isUsdInputMode;
+        
+        // Clear the current input when switching modes
+        currentInput.setLength(0);
+        
+        // Update UI based on current input mode
+        if (isUsdInputMode) {
+            // In USD mode, show USD as primary and sats as conversion
+            amountDisplay.setText("$0.00");
+            fiatAmountDisplay.setText("₿ 0");
+        } else {
+            // In sats mode (default), show sats as primary and USD as conversion
+            amountDisplay.setText("₿ 0");
+            fiatAmountDisplay.setText("$0.00 USD");
+        }
+        
+        // Update the submit button
+        submitButton.setText("Charge");
+        submitButton.setEnabled(false);
     }
 
     private void onKeypadButtonClick(String label) {
@@ -260,8 +297,16 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
                 }
                 break;
             default:
-                if (currentInput.length() < 9) { // Limit input to 9 digits
-                    currentInput.append(label);
+                if (isUsdInputMode) {
+                    // In USD mode, limit to 7 digits (max $99,999.99)
+                    if (currentInput.length() < 7) {
+                        currentInput.append(label);
+                    }
+                } else {
+                    // In sats mode, limit to 9 digits
+                    if (currentInput.length() < 9) {
+                        currentInput.append(label);
+                    }
                 }
                 break;
         }
@@ -278,18 +323,74 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
     }
 
     private void updateDisplay() {
-        // Update amount display
-        String displayAmount = formatAmount(currentInput.toString());
-        amountDisplay.setText(displayAmount);
+        // Get the current value from the input
+        String inputStr = currentInput.toString();
+        long satsValue = 0;
+        double usdValue = 0;
         
-        // Update submit button text
-        long value = currentInput.toString().isEmpty() ? 0 : Long.parseLong(currentInput.toString());
-        if (value > 0) {
-            submitButton.setText("Charge " + displayAmount);
+        if (isUsdInputMode) {
+            // Converting from USD input to sats equivalent
+            if (!inputStr.isEmpty()) {
+                try {
+                    // Convert the input string to a double value in cents
+                    long cents = Long.parseLong(inputStr);
+                    usdValue = cents / 100.0; // Convert cents to dollars
+                    
+                    if (bitcoinPriceWorker != null && bitcoinPriceWorker.getBtcUsdPrice() > 0) {
+                        // Calculate equivalent sats value
+                        double btcAmount = usdValue / bitcoinPriceWorker.getBtcUsdPrice();
+                        satsValue = (long)(btcAmount * 100000000); // Convert BTC to sats
+                    }
+                    
+                    // Format USD amount for display (handling decimal point)
+                    String dollars = String.valueOf(cents / 100);
+                    String centsStr = String.format("%02d", cents % 100);
+                    String displayUsd = "$" + dollars + "." + centsStr;
+                    amountDisplay.setText(displayUsd);
+                    
+                    // Format sats equivalent
+                    String satoshiEquivalent = "₿ " + NumberFormat.getNumberInstance(Locale.US).format(satsValue);
+                    fiatAmountDisplay.setText(satoshiEquivalent);
+                } catch (NumberFormatException e) {
+                    amountDisplay.setText("$0.00");
+                    fiatAmountDisplay.setText("₿ 0");
+                    satsValue = 0;
+                }
+            } else {
+                amountDisplay.setText("$0.00");
+                fiatAmountDisplay.setText("₿ 0");
+                satsValue = 0;
+            }
+        } else {
+            // Original sats input mode
+            satsValue = inputStr.isEmpty() ? 0 : Long.parseLong(inputStr);
+            
+            // Format sats amount
+            String displayAmount = formatAmount(inputStr);
+            amountDisplay.setText(displayAmount);
+            
+            // Calculate and display USD equivalent
+            if (bitcoinPriceWorker != null) {
+                usdValue = bitcoinPriceWorker.satoshisToUsd(satsValue);
+                String formattedUsdAmount = bitcoinPriceWorker.formatUsdAmount(usdValue);
+                fiatAmountDisplay.setText(formattedUsdAmount);
+            } else {
+                fiatAmountDisplay.setText("$0.00 USD");
+            }
+        }
+        
+        // Update submit button text - always charge in sats
+        if (satsValue > 0) {
+            String chargeText = "Charge ₿ " + NumberFormat.getNumberInstance(Locale.US).format(satsValue);
+            submitButton.setText(chargeText);
             submitButton.setEnabled(true);
+            
+            // Store actual sats value for transaction
+            requestedAmount = satsValue;
         } else {
             submitButton.setText("Charge");
             submitButton.setEnabled(false);
+            requestedAmount = 0;
         }
     }
 
@@ -329,38 +430,13 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         }
         final String finalPaymentRequest = paymentRequestLocal;
         
-        // Show the unified NFC scan dialog
+        // Show the unified NFC scan dialog using the simplified design
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.Theme_Shellshock);
         LayoutInflater inflater = this.getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_nfc_modern, null);
+        View dialogView = inflater.inflate(R.layout.dialog_nfc_modern_simplified, null);
         builder.setView(dialogView);
-
-        // Set up dialog content
-        TextView nfcAmountDisplay = dialogView.findViewById(R.id.nfc_amount_display);
-        nfcAmountDisplay.setText(formatAmount(String.valueOf(amount)));
         
-        TextView titleView = dialogView.findViewById(R.id.nfc_dialog_title);
-        if (titleView != null) {
-            titleView.setText("Scan Card or Device");
-        }
-        
-        TextView hintView = dialogView.findViewById(R.id.nfc_hint_text);
-        if (hintView != null) {
-            if (ndefAvailable && finalPaymentRequest != null) {
-                hintView.setText("Scan a Satocash card or bring your phone near an NFC device for payment");
-            } else {
-                hintView.setText("Scan your Satocash card to make the payment");
-            }
-            hintView.setVisibility(View.VISIBLE);
-        }
-        
-        // Hide payment method buttons in unified flow
-        Button smartcardButton = dialogView.findViewById(R.id.btn_smartcard_payment);
-        Button ndefButton = dialogView.findViewById(R.id.btn_ndef_payment);
-        if (smartcardButton != null) smartcardButton.setVisibility(View.GONE);
-        if (ndefButton != null) ndefButton.setVisibility(View.GONE);
-        
-        // Add cancel button functionality if available
+        // Only need the cancel button
         Button cancelButton = dialogView.findViewById(R.id.nfc_cancel_button);
         if (cancelButton != null) {
             cancelButton.setOnClickListener(v -> {
@@ -426,6 +502,10 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         
         // Show the dialog
         nfcDialog = builder.create();
+        
+        // Make dialog take up full height
+        nfcDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        
         nfcDialog.show();
     }
 
@@ -585,26 +665,8 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
     private void showRescanDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.Theme_Shellshock);
         LayoutInflater inflater = this.getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_nfc_modern, null);
+        View dialogView = inflater.inflate(R.layout.dialog_nfc_modern_simplified, null);
         builder.setView(dialogView);
-
-        TextView nfcAmountDisplay = dialogView.findViewById(R.id.nfc_amount_display);
-        if (nfcAmountDisplay != null) {
-            nfcAmountDisplay.setText(formatAmount(String.valueOf(requestedAmount)));
-        }
-
-        // Update the dialog title to provide clear instructions
-        TextView titleView = dialogView.findViewById(R.id.nfc_dialog_title);
-        if (titleView != null) {
-            titleView.setText("Scan Card Again");
-        }
-        
-        // Add message below the amount
-        TextView hintView = dialogView.findViewById(R.id.nfc_hint_text);
-        if (hintView != null) {
-            hintView.setText("PIN accepted. Please scan your card again to complete payment.");
-            hintView.setVisibility(View.VISIBLE);
-        }
 
         builder.setCancelable(true);
         builder.setOnCancelListener(dialog -> {
@@ -612,28 +674,50 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             savedPin = null;
             waitingForRescan = false;
         });
+        
+        // Set up cancel button
+        Button cancelButton = dialogView.findViewById(R.id.nfc_cancel_button);
+        if (cancelButton != null) {
+            cancelButton.setOnClickListener(v -> {
+                if (rescanDialog != null && rescanDialog.isShowing()) {
+                    rescanDialog.dismiss();
+                }
+                // Reset state
+                savedPin = null;
+                waitingForRescan = false;
+                Toast.makeText(this, "Payment canceled", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         rescanDialog = builder.create();
+        
+        // Make dialog take up full height
+        if (rescanDialog.getWindow() != null) {
+            rescanDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        }
+        
         rescanDialog.show();
     }
 
     private void showProcessingDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.Theme_Shellshock);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_nfc_modern, null);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_nfc_modern_simplified, null);
         builder.setView(dialogView);
-
-        TextView titleView = dialogView.findViewById(R.id.nfc_dialog_title);
-        if (titleView != null) {
-            titleView.setText("Processing Payment");
-        }
         
-        TextView amountView = dialogView.findViewById(R.id.nfc_amount_display);
-        if (amountView != null) {
-            amountView.setText(formatAmount(String.valueOf(requestedAmount)));
+        // Hide the cancel button since this is a processing dialog
+        Button cancelButton = dialogView.findViewById(R.id.nfc_cancel_button);
+        if (cancelButton != null) {
+            cancelButton.setVisibility(View.GONE);
         }
         
         builder.setCancelable(false);
         processingDialog = builder.create();
+        
+        // Make dialog take up full height
+        if (processingDialog.getWindow() != null) {
+            processingDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        }
+        
         processingDialog.show();
     }
 
@@ -698,6 +782,12 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
     protected void onDestroy() {
         // Make sure to stop the HCE service when the activity is destroyed
         stopHceService();
+        
+        // Stop the Bitcoin price worker
+        if (bitcoinPriceWorker != null) {
+            bitcoinPriceWorker.stop();
+        }
+        
         super.onDestroy();
     }
 
@@ -873,7 +963,6 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             }
             switchToTokenMode();
             tokenDisplay.setText("Error: " + message);
-            copyTokenButton.setVisibility(View.GONE);
             openWithButton.setVisibility(View.GONE);
         });
     }
@@ -887,7 +976,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             NdefHostCardEmulationService hceService = NdefHostCardEmulationService.getInstance();
             if (hceService != null) {
                 Log.d(TAG, "Resetting HCE service state...");
-                // Clear any pending payment request
+                // Clear any pending payment request (this will also disable message processing)
                 hceService.clearPaymentRequest();
                 // Remove payment callback
                 hceService.setPaymentCallback(null);
@@ -931,6 +1020,9 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         // Ensure HCE service is cleaned up on success
         stopHceService();
 
+        // Play success feedback
+        playSuccessFeedback();
+
         TokenHistoryActivity.addToHistory(this, token, amount);
 
         mainHandler.post(() -> {
@@ -948,10 +1040,26 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             }
             switchToTokenMode();
             tokenDisplay.setText(token);
-            copyTokenButton.setVisibility(View.VISIBLE);
             openWithButton.setVisibility(View.VISIBLE);
             Toast.makeText(this, "Payment successful!", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void playSuccessFeedback() {
+        // Play success sound
+        try {
+            MediaPlayer mediaPlayer = MediaPlayer.create(this, R.raw.success_sound);
+            if (mediaPlayer != null) {
+                mediaPlayer.setOnCompletionListener(mp -> mp.release());
+                mediaPlayer.start();
+                Log.d(TAG, "Success sound played");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing success sound: " + e.getMessage());
+        }
+
+        // Vibrate with success pattern
+        vibrateSuccess();
     }
 
     private void showPinDialog(PinDialogCallback callback) {

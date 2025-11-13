@@ -1,10 +1,15 @@
 package com.electricdreams.shellshock.ndef;
 
+import android.content.Context;
+import android.media.MediaPlayer;
 import android.nfc.cardemulation.HostApduService;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.content.Intent;
 import android.util.Log;
+
+import com.electricdreams.shellshock.R;
 
 /**
  * Host Card Emulation service for NDEF tag emulation to receive Cashu payments
@@ -30,6 +35,12 @@ public class NdefHostCardEmulationService extends HostApduService {
     private NdefProcessor ndefProcessor;
     private CashuPaymentCallback paymentCallback;
     private long expectedAmount = 0; // The expected amount for token validation
+    
+    // Vibration patterns (in milliseconds)
+    private static final long[] PATTERN_SUCCESS = {0, 50, 100, 50}; // Two quick pulses
+    
+    // Media player for success sound
+    private MediaPlayer mediaPlayer;
     
     // Singleton instance for access from activities
     private static NdefHostCardEmulationService instance;
@@ -107,6 +118,9 @@ public class NdefHostCardEmulationService extends HostApduService {
                                     String redeemedToken = CashuPaymentHelper.redeemToken(cashuToken);
                                     Log.i(TAG, "Token successfully redeemed and reissued: " + redeemedToken.substring(0, Math.min(redeemedToken.length(), 20)) + "...");
                                     
+                                    // Play success feedback
+                                    playSuccessFeedback();
+                                    
                                     // Notify the callback with the redeemed token
                                     if (paymentCallback != null) {
                                         Log.i(TAG, "Calling payment success callback");
@@ -145,13 +159,14 @@ public class NdefHostCardEmulationService extends HostApduService {
                                         Log.e(TAG, "Payment callback is null, can't report redemption error");
                                     }
                                 } finally {
-                                    // DO NOT reset the write mode to ensure service can continue to read tokens
-                                    Log.i(TAG, "Maintaining write mode for continued token reception");
-                                    // if (ndefProcessor != null) {
-                                    //     ndefProcessor.setWriteMode(false);
-                                    // } else {
-                                    //     Log.e(TAG, "NDEF processor is null in finally block");
-                                    // }
+                                    // Instead of always maintaining write mode, we now only maintain
+                                    // write mode and processing flags if we want to continue receiving tokens
+                                    Log.i(TAG, "Token processing complete");
+                                    // Disable incoming message processing after successful token processing
+                                    if (ndefProcessor != null) {
+                                        Log.i(TAG, "Disabling incoming message processing after token processing");
+                                        ndefProcessor.setProcessIncomingMessages(false);
+                                    }
                                 }
                             } else {
                                 Log.e(TAG, "Token failed validation, ignoring");
@@ -182,6 +197,20 @@ public class NdefHostCardEmulationService extends HostApduService {
     public void onDestroy() {
         Log.i(TAG, "=== HCE Service onDestroy called ===");
         super.onDestroy();
+        
+        // Clean up MediaPlayer resources
+        if (mediaPlayer != null) {
+            try {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+                mediaPlayer.release();
+                mediaPlayer = null;
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing MediaPlayer: " + e.getMessage());
+            }
+        }
+        
         Log.i(TAG, "NdefHostCardEmulationService destroyed");
         
         // Clear the instance if this is the current one
@@ -251,6 +280,9 @@ public class NdefHostCardEmulationService extends HostApduService {
         if (ndefProcessor != null) {
             ndefProcessor.setMessageToSend(paymentRequest);
             ndefProcessor.setWriteMode(true); // Enable write mode to send payment request
+            // Explicitly enable incoming message processing
+            ndefProcessor.setProcessIncomingMessages(true);
+            Log.i(TAG, "NDEF processor ready to send and receive messages");
         } else {
             Log.e(TAG, "NDEF processor is null, can't set payment request");
         }
@@ -272,8 +304,11 @@ public class NdefHostCardEmulationService extends HostApduService {
         this.expectedAmount = 0;
         if (ndefProcessor != null) {
             ndefProcessor.setMessageToSend("");
-            // Keep write mode enabled to still be able to receive tokens
-            // ndefProcessor.setWriteMode(false);
+            // Disable write mode when clearing payment request
+            ndefProcessor.setWriteMode(false);
+            // Explicitly disable incoming message processing when payment is not expected
+            ndefProcessor.setProcessIncomingMessages(false);
+            Log.i(TAG, "NDEF processor no longer processing incoming messages");
         } else {
             Log.e(TAG, "NDEF processor is null, can't clear payment request");
         }
@@ -382,5 +417,45 @@ public class NdefHostCardEmulationService extends HostApduService {
         Log.i(TAG, "=== HCE Service onTaskRemoved called ===");
         Log.i(TAG, "Root Intent: " + (rootIntent != null ? rootIntent.toString() : "null"));
         super.onTaskRemoved(rootIntent);
+    }
+    
+    /**
+     * Play a success sound and vibrate the device to indicate successful token reception
+     */
+    private void playSuccessFeedback() {
+        Log.d(TAG, "Playing success feedback");
+        
+        try {
+            // Play success sound
+            if (mediaPlayer != null) {
+                mediaPlayer.release();
+            }
+            
+            mediaPlayer = MediaPlayer.create(this, R.raw.success_sound);
+            if (mediaPlayer != null) {
+                mediaPlayer.setOnCompletionListener(mp -> {
+                    mp.release();
+                });
+                mediaPlayer.start();
+                Log.d(TAG, "Success sound played");
+            } else {
+                Log.e(TAG, "Failed to create MediaPlayer for success sound");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing success sound: " + e.getMessage(), e);
+        }
+        
+        try {
+            // Vibrate with success pattern
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(PATTERN_SUCCESS, -1);
+                Log.d(TAG, "Success vibration triggered");
+            } else {
+                Log.d(TAG, "Vibrator not available or disabled");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error triggering vibration: " + e.getMessage(), e);
+        }
     }
 }

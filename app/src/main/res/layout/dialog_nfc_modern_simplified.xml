@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:cardBackgroundColor="@color/white"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="8dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/white"
+        android:padding="24dp">
+
+        <!-- NFC indicator container at top - taller than wide like a credit card -->
+        <FrameLayout
+            android:id="@+id/card_container"
+            android:layout_width="220dp"
+            android:layout_height="320dp"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="48dp"
+            android:background="@drawable/nfc_payment_background_rect">
+                
+            <!-- Icons displayed vertically in center, contactless icon on top -->
+            <LinearLayout
+                android:id="@+id/payment_icons"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <!-- Contactless icon rotated 270 degrees to point directly upward -->
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="24dp"
+                    android:src="@drawable/contactless"
+                    android:rotation="270"
+                    android:contentDescription="Contactless payment" />
+
+                <ImageView
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/cashu"
+                    android:contentDescription="Cashu" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- Cancel button at bottom -->
+        <Button
+            android:id="@+id/nfc_cancel_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="48dp"
+            android:backgroundTint="@color/white"
+            android:text="CANCEL"
+            android:textColor="#FF0000"
+            android:textStyle="bold"
+            app:strokeColor="#FF0000"
+            app:strokeWidth="1dp" />
+    </RelativeLayout>
+</androidx.cardview.widget.CardView>
