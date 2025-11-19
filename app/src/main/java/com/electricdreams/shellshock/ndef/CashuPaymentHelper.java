@@ -333,7 +333,7 @@ public class CashuPaymentHelper {
                 BigInteger blindingFactor = new BigInteger(256, new SecureRandom());
                 blindingFactors.add(blindingFactor);
                 
-                // Create a blinded message with Y = B
+                // Create a blinded message with B' = Y + r*G
                 BlindedMessage blindedMessage = new BlindedMessage(
                         output,
                         selectedKeysetId,
