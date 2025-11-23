@@ -19,7 +19,7 @@ public class NdefMessageBuilder {
      * Uses a short record (SR = 1, 1-byte payload length) when payload <= 255 bytes,
      * and a normal record (SR = 0, 4-byte payload length) for larger payloads.
      */
-    private byte[] createNdefMessage(String message) {
+    public static byte[] createNdefMessage(String message) {
         byte[] languageCode = "en".getBytes(Charset.forName("US-ASCII"));
         byte[] textBytes = message.getBytes(Charset.forName("UTF-8"));
         byte statusByte = (byte) languageCode.length; // UTF-8 + language length
