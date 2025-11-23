@@ -279,6 +279,58 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
             .start()
     }
 
+    private fun animateSecondaryCurrencySwitch(newText: String, isUp: Boolean) {
+        secondaryAmountDisplay.animate().cancel()
+        switchCurrencyButton.animate().cancel()
+        
+        if (secondaryAmountDisplay.alpha == 0f) {
+            secondaryAmountDisplay.alpha = 1f
+            secondaryAmountDisplay.translationY = 0f
+        }
+        if (switchCurrencyButton.alpha == 0f) {
+            switchCurrencyButton.alpha = 1f
+            switchCurrencyButton.translationY = 0f
+        }
+        
+        val exitTranslation = if (isUp) -30f else 30f
+        val enterStartTranslation = if (isUp) 30f else -30f
+        
+        // Animate both text and icon together
+        secondaryAmountDisplay.animate()
+            .alpha(0f)
+            .translationY(exitTranslation)
+            .setDuration(150)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .withEndAction {
+                secondaryAmountDisplay.text = newText
+                secondaryAmountDisplay.translationY = enterStartTranslation
+                secondaryAmountDisplay.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(200)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
+            }
+            .start()
+            
+        // Animate icon with same timing
+        switchCurrencyButton.animate()
+            .alpha(0f)
+            .translationY(exitTranslation)
+            .setDuration(150)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .withEndAction {
+                switchCurrencyButton.translationY = enterStartTranslation
+                switchCurrencyButton.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(200)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
+            }
+            .start()
+    }
+
     private fun formatAmount(amount: String): String = try {
         val value = if (amount.isEmpty()) 0L else amount.toLong()
         Amount(value, Amount.Currency.BTC).toString()
@@ -317,13 +369,20 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
                 switchCurrencyButton.visibility = View.VISIBLE
             } else {
                 // No price data - just show "BTC" without swap icon
-                secondaryDisplayText = "BTC"
+        secondaryDisplayText = "BTC"
                 switchCurrencyButton.visibility = View.GONE
             }
         }
 
-        secondaryAmountDisplay.text = secondaryDisplayText
+        // Update secondary amount display with animation when switching currencies
+        if (animationType == AnimationType.CURRENCY_SWITCH) {
+            // Animate secondary display in opposite direction of main display
+            animateSecondaryCurrencySwitch(secondaryDisplayText, isUsdInputMode)
+        } else {
+            secondaryAmountDisplay.text = secondaryDisplayText
+        }
 
+        // Update main amount display
         if (amountDisplay.text.toString() != amountDisplayText) {
             when (animationType) {
                 AnimationType.CURRENCY_SWITCH -> animateCurrencySwitch(amountDisplayText, !isUsdInputMode)

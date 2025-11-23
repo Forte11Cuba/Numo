@@ -120,7 +120,6 @@
                 android:orientation="horizontal"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="8dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -134,17 +133,18 @@
                     android:layout_height="wrap_content"
                     android:text="$0.00 USD"
                     android:textColor="@color/color_bg_white"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     android:textStyle="normal" />
 
                 <ImageButton
                     android:id="@+id/currency_switch_button"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="4dp"
                     android:background="@android:color/transparent"
                     android:contentDescription="Swap currency"
                     android:src="@drawable/ic_switch_currency"
+                    android:rotation="90"
                     android:clickable="false"
                     android:focusable="false"
                     app:tint="@color/color_bg_white" />
