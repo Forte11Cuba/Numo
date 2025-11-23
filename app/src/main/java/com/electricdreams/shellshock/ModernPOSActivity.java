@@ -9,7 +9,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
@@ -33,6 +36,7 @@ import android.widget.Toast;
 import android.widget.FrameLayout;
 
 import com.electricdreams.shellshock.core.util.CurrencyManager;
+import com.electricdreams.shellshock.core.model.Amount;
 import com.electricdreams.shellshock.feature.history.PaymentsHistoryActivity;
 import com.electricdreams.shellshock.feature.settings.SettingsActivity;
 
@@ -73,12 +77,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
     private TextView currencyText;
     private StringBuilder currentInput = new StringBuilder();
 
-    private TextView tokenDisplay;
-    private Button openWithButton;
-    private Button resetButton;
     private View switchCurrencyButton; // Changed to View for the invisible click target
-    private FrameLayout tokenScrollContainer;
-    private LinearLayout tokenActionsContainer;
     private ConstraintLayout inputModeContainer;
     private NfcAdapter nfcAdapter;
     private SatocashNfcClient satocashClient;
@@ -143,12 +142,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         submitButton = findViewById(R.id.submit_button);
         currencyText = findViewById(R.id.currency_text);
         GridLayout keypad = findViewById(R.id.keypad);
-        tokenDisplay = findViewById(R.id.token_display);
-        openWithButton = findViewById(R.id.open_with_button);
-        resetButton = findViewById(R.id.reset_button);
         switchCurrencyButton = findViewById(R.id.currency_switch_button);
-        tokenScrollContainer = findViewById(R.id.token_scroll_container);
-        tokenActionsContainer = findViewById(R.id.token_actions_container);
         inputModeContainer = findViewById(R.id.input_mode_container);
 
         // Enable edge-to-edge
@@ -194,16 +188,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         // Set up currency switch button
         switchCurrencyButton.setOnClickListener(v -> toggleInputMode());
 
-        // Set up token display click listener to copy token to clipboard
-        tokenDisplay.setOnClickListener(v -> {
-            String token = tokenDisplay.getText().toString();
-            if (!token.isEmpty() && !token.startsWith("Error:")) {
-                copyTokenToClipboard(token);
-            }
-        });
 
-        // Set up bottom navigation
-        // Set up bottom navigation
         ImageButton moreOptionsButton = findViewById(R.id.action_more_options);
         ImageButton historyButton = findViewById(R.id.action_history);
         ImageButton catalogButton = findViewById(R.id.action_catalog);
@@ -222,7 +207,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             "1", "2", "3",
             "4", "5", "6",
             "7", "8", "9",
-            "C", "0", "◀"
+            "C", "0", "<"
         };
 
         LayoutInflater inflater = LayoutInflater.from(this);
@@ -230,6 +215,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         // Update keypad button creation to use weight for equal sizing
         for (String label : buttonLabels) {
             Button button = (Button) inflater.inflate(R.layout.keypad_button_green_screen, keypad, false);
+
             button.setText(label);
             button.setOnClickListener(v -> onKeypadButtonClick(label));
             
@@ -252,14 +238,6 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             }
         });
 
-        openWithButton.setOnClickListener(v -> {
-            String token = tokenDisplay.getText().toString();
-            if (!token.isEmpty() && !token.startsWith("Error:")) {
-                openTokenWithApp(token);
-            }
-        });
-
-        resetButton.setOnClickListener(v -> resetToInputMode());
 
         // Ensure initial state
         resetToInputMode();
@@ -285,39 +263,10 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         }
     }
 
-    private void openTokenWithApp(String token) {
-        String cashuUri = "cashu:" + token;
-        
-        // Create intent for viewing the URI
-        Intent uriIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(cashuUri));
-        uriIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        // Create a fallback intent for sharing as text
-        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.setType("text/plain");
-        shareIntent.putExtra(Intent.EXTRA_TEXT, cashuUri);
-        
-        // Combine both intents into a chooser
-        Intent chooserIntent = Intent.createChooser(uriIntent, "Open token with...");
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { shareIntent });
-        
-        try {
-            startActivity(chooserIntent);
-        } catch (Exception e) {
-            Toast.makeText(this, "No apps available to handle this token", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     private void resetToInputMode() {
-        tokenScrollContainer.setVisibility(View.GONE);
-        tokenActionsContainer.setVisibility(View.GONE);
         inputModeContainer.setVisibility(View.VISIBLE);
-        
-        // Clear token display
-        tokenDisplay.setText("");
-        
-        // Reset buttons
-        openWithButton.setVisibility(View.GONE);
         
         // Reset PIN flow state
         savedPin = null;
@@ -333,20 +282,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         updateDisplay(AnimationType.NONE);
     }
 
-    private void switchToTokenMode() {
-        inputModeContainer.setVisibility(View.GONE);
-        tokenScrollContainer.setVisibility(View.VISIBLE);
-        tokenActionsContainer.setVisibility(View.VISIBLE);
-        tokenDisplay.setVisibility(View.VISIBLE);
-        openWithButton.setVisibility(View.VISIBLE);
-    }
 
-    private void copyTokenToClipboard(String token) {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        ClipData clip = ClipData.newPlainText("Cashu Token", token);
-        clipboard.setPrimaryClip(clip);
-        Toast.makeText(this, "Token copied to clipboard", Toast.LENGTH_SHORT).show();
-    }
     
     private void toggleInputMode() {
         // Check if we can switch to USD
@@ -420,7 +356,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             case "C":
                 currentInput.setLength(0);
                 break;
-            case "◀":
+            case "<":
                 if (currentInput.length() > 0) {
                     currentInput.setLength(currentInput.length() - 1);
                 }
@@ -477,22 +413,37 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
     }
 
     private void animateDigitEntry(String newText) {
-        // Sleek pop animation for digit entry
-        amountDisplay.setText(newText);
-        amountDisplay.setScaleX(0.95f);
-        amountDisplay.setScaleY(0.95f);
+        // Cancel any running animation
+        amountDisplay.animate().cancel();
+        
+        // Cash App/Apple-style sleek animation: subtle fade + scale
+        // Phase 1: Quick fade out and scale down
         amountDisplay.animate()
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(100)
-            .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f))
+            .alpha(0.7f)
+            .scaleX(0.92f)
+            .scaleY(0.92f)
+            .setDuration(80)
+            .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f))
+            .withEndAction(() -> {
+                // Update text at the midpoint
+                amountDisplay.setText(newText);
+                
+                // Phase 2: Smooth fade in and scale back with slight overshoot
+                amountDisplay.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(200)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(0.8f))
+                    .start();
+            })
             .start();
     }
 
     private String formatAmount(String amount) {
         try {
             long value = amount.isEmpty() ? 0 : Long.parseLong(amount);
-            return "₿ " + NumberFormat.getNumberInstance(Locale.US).format(value);
+            return new Amount(value, Amount.Currency.BTC).toString();
         } catch (NumberFormatException e) {
             return "";
         }
@@ -521,28 +472,26 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
                     
                     // Get currency symbol from CurrencyManager
                     CurrencyManager currencyManager = CurrencyManager.getInstance(this);
-                    String symbol = currencyManager.getCurrentSymbol();
+                    Amount.Currency currency = Amount.Currency.fromCode(currencyManager.getCurrentCurrency());
                     
-                    // Format fiat amount for display (handling decimal point)
-                    String wholePart = String.valueOf(cents / 100);
-                    String centsPart = String.format("%02d", cents % 100);
-                    amountDisplayText = symbol + wholePart + "." + centsPart;
+                    // Format fiat amount for display using Amount class
+                    amountDisplayText = new Amount(cents, currency).toString();
                     
                     // Format sats equivalent
-                    String satoshiEquivalent = "₿ " + NumberFormat.getNumberInstance(Locale.US).format(satsValue);
+                    String satoshiEquivalent = new Amount(satsValue, Amount.Currency.BTC).toString();
                     fiatAmountDisplay.setText(satoshiEquivalent);
                 } catch (NumberFormatException e) {
                     CurrencyManager currencyManager = CurrencyManager.getInstance(this);
-                    String symbol = currencyManager.getCurrentSymbol();
-                    amountDisplayText = symbol + "0.00";
-                    fiatAmountDisplay.setText("₿ 0");
+                    Amount.Currency currency = Amount.Currency.fromCode(currencyManager.getCurrentCurrency());
+                    amountDisplayText = new Amount(0, currency).toString();
+                    fiatAmountDisplay.setText(new Amount(0, Amount.Currency.BTC).toString());
                     satsValue = 0;
                 }
             } else {
                 CurrencyManager currencyManager = CurrencyManager.getInstance(this);
-                String symbol = currencyManager.getCurrentSymbol();
-                amountDisplayText = symbol + "0.00";
-                fiatAmountDisplay.setText("₿ 0");
+                Amount.Currency currency = Amount.Currency.fromCode(currencyManager.getCurrentCurrency());
+                amountDisplayText = new Amount(0, currency).toString();
+                fiatAmountDisplay.setText(new Amount(0, Amount.Currency.BTC).toString());
                 satsValue = 0;
             }
         } else {
@@ -579,7 +528,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         
         // Update submit button text - always charge in sats
         if (satsValue > 0) {
-            String chargeText = "Charge ₿ " + NumberFormat.getNumberInstance(Locale.US).format(satsValue);
+            String chargeText = "Charge " + new Amount(satsValue, Amount.Currency.BTC).toString();
             submitButton.setText(chargeText);
             submitButton.setEnabled(true);
             
@@ -595,7 +544,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
         if (isUsdInputMode) {
             currencyText.setText("USD");
         } else {
-            currencyText.setText("SATS");
+            currencyText.setText("BTC");
         }
     }
 
@@ -902,21 +851,56 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
                 if (token != null && amount > 0) {
                     Log.d(TAG, "Payment completed successfully! Token: " + token);
                     
+                    // Capture entered amount before resetting
+                    long enteredAmount;
+                    String entryUnit;
+                    if (isUsdInputMode) {
+                        // In USD mode, use the actual input value (in cents)
+                        entryUnit = "USD";
+                        String inputStr = currentInput.toString();
+                        if (!inputStr.isEmpty()) {
+                            try {
+                                enteredAmount = Long.parseLong(inputStr); // Already in cents
+                            } catch (NumberFormatException e) {
+                                enteredAmount = amount; // Fallback to sats if parsing fails
+                            }
+                        } else {
+                            enteredAmount = amount; // Fallback to sats if no input
+                        }
+                    } else {
+                        // In SAT mode, entered amount is the same as amount
+                        entryUnit = "sat";
+                        enteredAmount = amount;
+                    }
+                    
+                    // Get current Bitcoin price
+                    Double bitcoinPrice = null;
+                    if (bitcoinPriceWorker != null && bitcoinPriceWorker.getCurrentPrice() > 0) {
+                        bitcoinPrice = bitcoinPriceWorker.getCurrentPrice();
+                    }
+                    
                     // Reset the input state
                     requestedAmount = 0;
                     currentInput.setLength(0);
                     
+                    // Reset the display to show 0
+                    updateDisplay(AnimationType.NONE);
+                    
                     // Play success feedback
                     playSuccessFeedback();
                     
-                    // Add to payment history
-                    PaymentsHistoryActivity.addToHistory(this, token, amount);
+                    // Extract mint URL from token
+                    String mintUrl = extractMintUrlFromToken(token);
                     
-                    // Show the token in the UI
-                    switchToTokenMode();
-                    tokenDisplay.setText(token);
-                    openWithButton.setVisibility(View.VISIBLE);
-                    Toast.makeText(this, "Payment successful!", Toast.LENGTH_SHORT).show();
+                    // Add to payment history with comprehensive information
+                    PaymentsHistoryActivity.addToHistory(this, token, amount, "sat", entryUnit, 
+                                                        enteredAmount, bitcoinPrice, mintUrl, null);
+                    
+                    // Launch PaymentReceivedActivity to show beautiful success screen
+                    Intent successIntent = new Intent(this, PaymentReceivedActivity.class);
+                    successIntent.putExtra(PaymentReceivedActivity.EXTRA_TOKEN, token);
+                    successIntent.putExtra(PaymentReceivedActivity.EXTRA_AMOUNT, amount);
+                    startActivity(successIntent);
                 } else {
                     Log.e(TAG, "Invalid payment result data");
                     Toast.makeText(this, "Payment completed but data was invalid", Toast.LENGTH_SHORT).show();
@@ -1127,9 +1111,7 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             if (processingDialog != null && processingDialog.isShowing()) {
                 processingDialog.dismiss();
             }
-            switchToTokenMode();
-            tokenDisplay.setText("Error: " + message);
-            openWithButton.setVisibility(View.GONE);
+            Toast.makeText(this, "Payment error: " + message, Toast.LENGTH_LONG).show();
         });
     }
     
@@ -1178,6 +1160,31 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
 
     private void handlePaymentSuccess(String token) {
         long amount = requestedAmount;
+        
+        // Capture entered amount before resetting
+        long enteredAmount;
+        String entryUnit;
+        if (isUsdInputMode) {
+            // In USD mode, calculate the fiat amount that was entered
+            entryUnit = "USD";
+            if (bitcoinPriceWorker != null && bitcoinPriceWorker.getCurrentPrice() > 0) {
+                double fiatValue = bitcoinPriceWorker.satoshisToFiat(amount);
+                enteredAmount = (long)(fiatValue * 100); // Convert to cents
+            } else {
+                enteredAmount = amount; // Fallback to sats if no price available
+            }
+        } else {
+            // In SAT mode, entered amount is the same as amount
+            entryUnit = "sat";
+            enteredAmount = amount;
+        }
+        
+        // Get current Bitcoin price
+        Double bitcoinPrice = null;
+        if (bitcoinPriceWorker != null && bitcoinPriceWorker.getCurrentPrice() > 0) {
+            bitcoinPrice = bitcoinPriceWorker.getCurrentPrice();
+        }
+        
         requestedAmount = 0;
         currentInput.setLength(0);
 
@@ -1190,8 +1197,13 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
 
         // Play success feedback
         playSuccessFeedback();
-
-        PaymentsHistoryActivity.addToHistory(this, token, amount);
+        
+        // Extract mint URL from token
+        String mintUrl = extractMintUrlFromToken(token);
+        
+        // Add to payment history with comprehensive information
+        PaymentsHistoryActivity.addToHistory(this, token, amount, "sat", entryUnit, 
+                                            enteredAmount, bitcoinPrice, mintUrl, null);
 
         mainHandler.post(() -> {
             if (rescanDialog != null && rescanDialog.isShowing()) {
@@ -1200,10 +1212,15 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
             if (processingDialog != null && processingDialog.isShowing()) {
                 processingDialog.dismiss();
             }
-            switchToTokenMode();
-            tokenDisplay.setText(token);
-            openWithButton.setVisibility(View.VISIBLE);
-            Toast.makeText(this, "Payment successful!", Toast.LENGTH_SHORT).show();
+            
+            // Reset the display to show 0
+            updateDisplay(AnimationType.NONE);
+            
+            // Launch PaymentReceivedActivity to show beautiful success screen
+            Intent successIntent = new Intent(this, PaymentReceivedActivity.class);
+            successIntent.putExtra(PaymentReceivedActivity.EXTRA_TOKEN, token);
+            successIntent.putExtra(PaymentReceivedActivity.EXTRA_AMOUNT, amount);
+            startActivity(successIntent);
         });
     }
 
@@ -1529,5 +1546,22 @@ public class ModernPOSActivity extends AppCompatActivity implements SatocashWall
                 });
             }
         }).start();
+    }
+    
+    /**
+     * Extract mint URL from a cashu token
+     * @param tokenString The cashu token string
+     * @return The mint URL or null if extraction fails
+     */
+    private String extractMintUrlFromToken(String tokenString) {
+        try {
+            if (tokenString != null && !tokenString.isEmpty()) {
+                com.cashujdk.nut00.Token token = com.cashujdk.nut00.Token.decode(tokenString);
+                return token.mint;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to extract mint URL from token: " + e.getMessage());
+        }
+        return null;
     }
 }

@@ -1,16 +1,10 @@
 package com.electricdreams.shellshock.ui.adapter;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -25,15 +19,15 @@ import java.util.Locale;
 
 public class PaymentsHistoryAdapter extends RecyclerView.Adapter<PaymentsHistoryAdapter.ViewHolder> {
     private final List<PaymentHistoryEntry> entries = new ArrayList<>();
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault());
-    private OnDeleteClickListener onDeleteClickListener;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.getDefault());
+    private OnItemClickListener onItemClickListener;
 
-    public interface OnDeleteClickListener {
-        void onDeleteClick(PaymentHistoryEntry entry, int position);
+    public interface OnItemClickListener {
+        void onItemClick(PaymentHistoryEntry entry, int position);
     }
 
-    public void setOnDeleteClickListener(OnDeleteClickListener listener) {
-        this.onDeleteClickListener = listener;
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.onItemClickListener = listener;
     }
 
     public void setEntries(List<PaymentHistoryEntry> newEntries) {
@@ -46,54 +40,54 @@ public class PaymentsHistoryAdapter extends RecyclerView.Adapter<PaymentsHistory
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_transaction_row, parent, false);
+                .inflate(R.layout.item_payment_history, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         PaymentHistoryEntry entry = entries.get(position);
-        holder.amountText.setText(String.format(Locale.getDefault(), "%d ₿", entry.getAmount()));
+        
+        // Display amount in the unit it was entered
+        String formattedAmount;
+        if (entry.getEntryUnit() != null && !entry.getEntryUnit().equals("sat")) {
+            // Display in fiat currency (USD, EUR, etc.)
+            com.electricdreams.shellshock.core.model.Amount.Currency entryCurrency = 
+                com.electricdreams.shellshock.core.model.Amount.Currency.fromCode(entry.getEntryUnit());
+            com.electricdreams.shellshock.core.model.Amount entryAmount = 
+                new com.electricdreams.shellshock.core.model.Amount(entry.getEnteredAmount(), entryCurrency);
+            formattedAmount = entryAmount.toString();
+        } else {
+            // Display in sats
+            long amount = entry.getAmount();
+            com.electricdreams.shellshock.core.model.Amount satAmount = 
+                new com.electricdreams.shellshock.core.model.Amount(amount, 
+                    com.electricdreams.shellshock.core.model.Amount.Currency.BTC);
+            formattedAmount = satAmount.toString();
+        }
+        
+        // Add + sign for positive amounts
+        if (entry.getAmount() >= 0) {
+            formattedAmount = "+" + formattedAmount;
+        }
+        
+        holder.amountText.setText(formattedAmount);
+        
+        // Set date
         holder.dateText.setText(dateFormat.format(entry.getDate()));
         
-        holder.copyButton.setOnClickListener(v -> {
-            ClipboardManager clipboard = (ClipboardManager) v.getContext()
-                    .getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("Payment", entry.getToken());
-            clipboard.setPrimaryClip(clip);
-            Toast.makeText(v.getContext(), "Payment copied to clipboard", Toast.LENGTH_SHORT).show();
-        });
+        // Set title based on amount (simple logic for now)
+        if (entry.getAmount() > 0) {
+            holder.titleText.setText("Cash In");
+        } else {
+            holder.titleText.setText("Cash Out");
+        }
 
-        holder.openWithButton.setOnClickListener(v -> openPaymentWithApp(v.getContext(), entry.getToken()));
-
-        holder.deleteButton.setOnClickListener(v -> {
-            if (onDeleteClickListener != null) {
-                onDeleteClickListener.onDeleteClick(entry, position);
+        holder.itemView.setOnClickListener(v -> {
+            if (onItemClickListener != null) {
+                onItemClickListener.onItemClick(entry, position);
             }
         });
-    }
-
-    private void openPaymentWithApp(Context context, String token) {
-        String cashuUri = "cashu:" + token;
-        
-        // Create intent for viewing the URI
-        Intent uriIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(cashuUri));
-        uriIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-        // Create a fallback intent for sharing as text
-        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.setType("text/plain");
-        shareIntent.putExtra(Intent.EXTRA_TEXT, cashuUri);
-        
-        // Combine both intents into a chooser
-        Intent chooserIntent = Intent.createChooser(uriIntent, "Open payment with...");
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { shareIntent });
-        
-        try {
-            context.startActivity(chooserIntent);
-        } catch (Exception e) {
-            Toast.makeText(context, "No apps available to handle this payment", Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override
@@ -104,17 +98,13 @@ public class PaymentsHistoryAdapter extends RecyclerView.Adapter<PaymentsHistory
     static class ViewHolder extends RecyclerView.ViewHolder {
         final TextView amountText;
         final TextView dateText;
-        final ImageButton copyButton;
-        final ImageButton openWithButton;
-        final ImageButton deleteButton;
+        final TextView titleText;
 
         ViewHolder(View view) {
             super(view);
             amountText = view.findViewById(R.id.amount_text);
             dateText = view.findViewById(R.id.date_text);
-            copyButton = view.findViewById(R.id.copy_button);
-            openWithButton = view.findViewById(R.id.open_with_button);
-            deleteButton = view.findViewById(R.id.delete_button);
+            titleText = view.findViewById(R.id.title_text);
         }
     }
 }

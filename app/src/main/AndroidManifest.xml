@@ -87,6 +87,18 @@
                 android:value="com.electricdreams.shellshock.ModernPOSActivity" />
         </activity>
 
+        <!-- Payment Received Activity -->
+        <activity android:name="com.electricdreams.shellshock.PaymentReceivedActivity"
+            android:exported="false"
+            android:label="Payment Received"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName="com.electricdreams.shellshock.ModernPOSActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.electricdreams.shellshock.ModernPOSActivity" />
+        </activity>
+
         <activity android:name=".BalanceCheckActivity"
             android:exported="false"
             android:label="Check Balance"
@@ -116,6 +128,17 @@
                 android:value=".ModernPOSActivity" />
         </activity>
         
+        <activity android:name="com.electricdreams.shellshock.feature.history.TransactionDetailActivity"
+            android:exported="false"
+            android:label="Transaction Details"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.history.PaymentsHistoryActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.history.PaymentsHistoryActivity" />
+        </activity>
+        
         <activity android:name="com.electricdreams.shellshock.feature.settings.SettingsActivity"
             android:exported="false"
             android:label="Settings"
@@ -125,6 +148,39 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ModernPOSActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.settings.CurrencySettingsActivity"
+            android:exported="false"
+            android:label="Fiat Currency"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SettingsActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.settings.MintsSettingsActivity"
+            android:exported="false"
+            android:label="Cashu Mints"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SettingsActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.settings.ItemsSettingsActivity"
+            android:exported="false"
+            android:label="Items"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SettingsActivity" />
         </activity>
         
         <!-- Item Management Activities -->
@@ -144,10 +200,10 @@
             android:label="Items Catalog"
             android:theme="@style/Theme.Shellshock"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:parentActivityName=".feature.settings.SettingsActivity">
+            android:parentActivityName=".feature.settings.ItemsSettingsActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".feature.settings.SettingsActivity" />
+                android:value=".feature.settings.ItemsSettingsActivity" />
         </activity>
         
         <activity android:name="com.electricdreams.shellshock.feature.items.ItemSelectionActivity"
