@@ -118,6 +118,11 @@
                 android:layout_marginBottom="16dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -137,9 +142,11 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_marginStart="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:background="@android:color/transparent"
                     android:contentDescription="Swap currency"
                     android:src="@drawable/ic_switch_currency"
+                    android:clickable="false"
+                    android:focusable="false"
                     app:tint="@color/color_bg_white" />
             </LinearLayout>
 

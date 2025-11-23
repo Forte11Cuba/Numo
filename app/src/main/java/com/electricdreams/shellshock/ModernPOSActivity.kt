@@ -125,7 +125,9 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
 
         window.setBackgroundDrawableResource(R.color.color_primary_green)
 
-        switchCurrencyButton.setOnClickListener { toggleInputMode() }
+        // Set up currency toggle - click the entire container
+        val secondaryAmountContainer = findViewById<View>(R.id.secondary_amount_container)
+        secondaryAmountContainer.setOnClickListener { toggleInputMode() }
 
         findViewById<ImageButton>(R.id.action_more_options).setOnClickListener { showOverflowMenu(it) }
         findViewById<ImageButton>(R.id.action_history).setOnClickListener {
@@ -290,6 +292,9 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         val satsValue = if (inputStr.isEmpty()) 0 else inputStr.toLong()
         var amountDisplayText: String
         var secondaryDisplayText: String
+        
+        // Check if we have Bitcoin price data
+        val hasBitcoinPrice = (bitcoinPriceWorker?.getCurrentPrice() ?: 0.0) > 0
 
         if (isUsdInputMode) {
             // Display mode: show fiat as primary, sats as secondary
@@ -303,9 +308,18 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         } else {
             // Display mode: show sats as primary, fiat as secondary
             amountDisplayText = formatAmount(inputStr)
-            val fiatValue = bitcoinPriceWorker?.satoshisToFiat(satsValue) ?: 0.0
-            secondaryDisplayText = bitcoinPriceWorker?.formatFiatAmount(fiatValue)
-                ?: CurrencyManager.getInstance(this).formatCurrencyAmount(0.0)
+            
+            if (hasBitcoinPrice) {
+                // Show fiat conversion with swap icon
+                val fiatValue = bitcoinPriceWorker?.satoshisToFiat(satsValue) ?: 0.0
+                secondaryDisplayText = bitcoinPriceWorker?.formatFiatAmount(fiatValue)
+                    ?: CurrencyManager.getInstance(this).formatCurrencyAmount(0.0)
+                switchCurrencyButton.visibility = View.VISIBLE
+            } else {
+                // No price data - just show "BTC" without swap icon
+                secondaryDisplayText = "BTC"
+                switchCurrencyButton.visibility = View.GONE
+            }
         }
 
         secondaryAmountDisplay.text = secondaryDisplayText
