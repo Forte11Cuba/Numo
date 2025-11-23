@@ -32,7 +32,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Fiat Currency"
+            android:text="Theme"
             android:textAppearance="@style/Text.Title"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -53,24 +53,56 @@
             android:orientation="vertical"
             android:paddingBottom="32dp">
 
-            <!-- Section Header -->
+            <!-- Mode Section Header -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="24dp"
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="4dp"
-                android:text="PREFERRED CURRENCY"
+                android:text="MODE"
                 android:textAppearance="@style/Text.SectionHeader" />
 
-            <!-- Currency Radio Group -->
+            <!-- Dark Mode Toggle -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="24dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Dark Mode"
+                    android:textAppearance="@style/Text.BodyBold" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/dark_mode_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- App Theme Section Header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="4dp"
+                android:text="APP THEME"
+                android:textAppearance="@style/Text.SectionHeader" />
+
+            <!-- Theme Radio Group -->
             <RadioGroup
-                android:id="@+id/currency_radio_group"
+                android:id="@+id/theme_radio_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <RadioButton
-                    android:id="@+id/radio_usd"
+                    android:id="@+id/radio_obsidian"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -79,11 +111,11 @@
                     android:drawableTint="@color/color_primary_green"
                     android:gravity="center_vertical"
                     android:paddingHorizontal="24dp"
-                    android:text="US Dollar (USD)"
+                    android:text="Obsidian"
                     android:textAppearance="@style/Text.BodyBold" />
 
                 <RadioButton
-                    android:id="@+id/radio_eur"
+                    android:id="@+id/radio_bitcoin_orange"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -92,11 +124,11 @@
                     android:drawableTint="@color/color_primary_green"
                     android:gravity="center_vertical"
                     android:paddingHorizontal="24dp"
-                    android:text="Euro (EUR)"
+                    android:text="Bitcoin Orange"
                     android:textAppearance="@style/Text.BodyBold" />
 
                 <RadioButton
-                    android:id="@+id/radio_gbp"
+                    android:id="@+id/radio_green"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -105,11 +137,11 @@
                     android:drawableTint="@color/color_primary_green"
                     android:gravity="center_vertical"
                     android:paddingHorizontal="24dp"
-                    android:text="British Pound (GBP)"
+                    android:text="Green"
                     android:textAppearance="@style/Text.BodyBold" />
 
                 <RadioButton
-                    android:id="@+id/radio_jpy"
+                    android:id="@+id/radio_white"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -118,7 +150,7 @@
                     android:drawableTint="@color/color_primary_green"
                     android:gravity="center_vertical"
                     android:paddingHorizontal="24dp"
-                    android:text="Japanese Yen (JPY)"
+                    android:text="White"
                     android:textAppearance="@style/Text.BodyBold" />
             </RadioGroup>
 
@@ -126,3 +158,4 @@
     </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+

@@ -32,6 +32,7 @@ class PaymentRequestActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var closeButton: android.view.View
     private lateinit var shareButton: android.view.View
+    private lateinit var loadingSpinner: android.view.View
 
     private var paymentAmount: Long = 0
     private var hcePaymentRequest: String? = null
@@ -48,6 +49,7 @@ class PaymentRequestActivity : AppCompatActivity() {
         statusText = findViewById(R.id.payment_status_text)
         closeButton = findViewById(R.id.close_button)
         shareButton = findViewById(R.id.share_button)
+        loadingSpinner = findViewById(R.id.loading_spinner)
 
         // Get payment amount from intent
         paymentAmount = intent.getLongExtra(EXTRA_PAYMENT_AMOUNT, 0)
@@ -271,6 +273,10 @@ class PaymentRequestActivity : AppCompatActivity() {
 
     private fun handlePaymentSuccess(token: String) {
         Log.d(TAG, "Payment successful! Token: $token")
+        
+        // Hide loading spinner
+        loadingSpinner.visibility = android.view.View.GONE
+        
         statusText.text = "Payment successful!"
 
         val resultIntent = Intent().apply {
@@ -284,6 +290,10 @@ class PaymentRequestActivity : AppCompatActivity() {
 
     private fun handlePaymentError(errorMessage: String) {
         Log.e(TAG, "Payment error: $errorMessage")
+        
+        // Hide loading spinner
+        loadingSpinner.visibility = android.view.View.GONE
+        
         statusText.text = "Payment failed: $errorMessage"
         Toast.makeText(this, "Payment failed: $errorMessage", Toast.LENGTH_LONG).show()
 
@@ -296,6 +306,10 @@ class PaymentRequestActivity : AppCompatActivity() {
 
     private fun cancelPayment() {
         Log.d(TAG, "Payment cancelled")
+        
+        // Hide loading spinner
+        loadingSpinner.visibility = android.view.View.GONE
+        
         setResult(Activity.RESULT_CANCELED)
         cleanupAndFinish()
     }

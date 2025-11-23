@@ -72,14 +72,25 @@
                 android:layout_height="120dp"
                 android:clipChildren="false">
 
-                <!-- Solid checkmark circle icon -->
+                <!-- Green circle background -->
                 <ImageView
-                    android:id="@+id/checkmark_icon"
+                    android:id="@+id/checkmark_circle"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:contentDescription="Success"
-                    android:src="@drawable/ic_checkmark_circle_2"
+                    android:contentDescription="Success background"
+                    android:src="@drawable/ic_circle_solid_green"
                     android:visibility="invisible" />
+
+                <!-- White checkmark icon -->
+                <ImageView
+                    android:id="@+id/checkmark_icon"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Success"
+                    android:src="@drawable/ic_check"
+                    android:visibility="invisible"
+                    app:tint="@color/color_bg_white" />
 
             </FrameLayout>
 

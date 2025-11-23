@@ -2,13 +2,13 @@
 <resources>
     <style name="Theme.Shellshock" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/dark_buttonBackground</item>
+        <item name="colorPrimary">#FFFFFF</item>
         <item name="colorPrimaryVariant">@color/dark_colorPrimaryDark</item>
-        <item name="colorOnPrimary">@color/dark_buttonText</item>
+        <item name="colorOnPrimary">#000000</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/dark_buttonBackground</item>
-        <item name="colorSecondaryVariant">@color/dark_buttonBackground</item>
-        <item name="colorOnSecondary">@color/dark_buttonText</item>
+        <item name="colorSecondary">#FFFFFF</item>
+        <item name="colorSecondaryVariant">#FFFFFF</item>
+        <item name="colorOnSecondary">#000000</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Text colors -->
@@ -28,6 +28,8 @@
         <item name="toolbarStyle">@style/Widget.App.Toolbar.Dark</item>
         <!-- Icon tint -->
         <item name="colorControlNormal">@color/dark_iconTint</item>
+        <!-- Switch colors -->
+        <item name="colorControlActivated">#FFFFFF</item>
     </style>
 
     <style name="Widget.App.Toolbar.Dark" parent="Widget.MaterialComponents.Toolbar.Primary">

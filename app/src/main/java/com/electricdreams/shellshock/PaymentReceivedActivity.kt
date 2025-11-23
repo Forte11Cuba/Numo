@@ -31,6 +31,7 @@ class PaymentReceivedActivity : AppCompatActivity() {
     }
     
     private lateinit var amountText: TextView
+    private lateinit var checkmarkCircle: ImageView
     private lateinit var checkmarkIcon: ImageView
     private lateinit var closeButton: Button
     private lateinit var shareIconButton: ImageButton
@@ -63,6 +64,7 @@ class PaymentReceivedActivity : AppCompatActivity() {
         
         // Initialize views
         amountText = findViewById(R.id.amount_received_text)
+        checkmarkCircle = findViewById(R.id.checkmark_circle)
         checkmarkIcon = findViewById(R.id.checkmark_icon)
         closeButton = findViewById(R.id.close_button)
         shareIconButton = findViewById(R.id.share_icon_button)
@@ -129,29 +131,61 @@ class PaymentReceivedActivity : AppCompatActivity() {
     }
     
     private fun animateCheckmark() {
-        // Animate solid checkmark circle icon
+        // Simple, elegant success animation
+        // 1. Green circle scales in smoothly
+        // 2. White checkmark pops in with overshoot
+        
+        // Set initial states
+        checkmarkCircle.alpha = 0f
+        checkmarkCircle.scaleX = 0.3f
+        checkmarkCircle.scaleY = 0.3f
+        checkmarkCircle.visibility = View.VISIBLE
+        
         checkmarkIcon.alpha = 0f
         checkmarkIcon.scaleX = 0f
         checkmarkIcon.scaleY = 0f
         checkmarkIcon.visibility = View.VISIBLE
         
+        // Animate green circle - smooth scale and fade in
+        val circleScaleX = ObjectAnimator.ofFloat(checkmarkCircle, "scaleX", 0.3f, 1f).apply {
+            duration = 400
+            interpolator = android.view.animation.DecelerateInterpolator(2f)
+        }
+        
+        val circleScaleY = ObjectAnimator.ofFloat(checkmarkCircle, "scaleY", 0.3f, 1f).apply {
+            duration = 400
+            interpolator = android.view.animation.DecelerateInterpolator(2f)
+        }
+        
+        val circleFadeIn = ObjectAnimator.ofFloat(checkmarkCircle, "alpha", 0f, 1f).apply {
+            duration = 350
+        }
+        
+        // Animate white checkmark - pop in with overshoot after circle
         val iconScaleX = ObjectAnimator.ofFloat(checkmarkIcon, "scaleX", 0f, 1f).apply {
             duration = 500
-            interpolator = OvershootInterpolator(2f)
+            startDelay = 150
+            interpolator = OvershootInterpolator(3f)
         }
         
         val iconScaleY = ObjectAnimator.ofFloat(checkmarkIcon, "scaleY", 0f, 1f).apply {
             duration = 500
-            interpolator = OvershootInterpolator(2f)
+            startDelay = 150
+            interpolator = OvershootInterpolator(3f)
         }
         
         val iconFadeIn = ObjectAnimator.ofFloat(checkmarkIcon, "alpha", 0f, 1f).apply {
             duration = 300
+            startDelay = 150
         }
         
-        val iconAnimatorSet = AnimatorSet()
-        iconAnimatorSet.playTogether(iconScaleX, iconScaleY, iconFadeIn)
-        iconAnimatorSet.start()
+        // Play all animations
+        val animatorSet = AnimatorSet()
+        animatorSet.playTogether(
+            circleScaleX, circleScaleY, circleFadeIn,
+            iconScaleX, iconScaleY, iconFadeIn
+        )
+        animatorSet.start()
     }
     
     private fun shareToken() {

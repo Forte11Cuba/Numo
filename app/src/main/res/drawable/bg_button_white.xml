@@ -7,18 +7,19 @@
             <solid android:color="#33000000" />
         </shape>
     </item>
-    <!-- Pressed state - slightly lighter black -->
+    <!-- Pressed state - 75% opacity white -->
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
             <corners android:radius="26dp" />
-            <solid android:color="#1A2529" />
+            <solid android:color="#BFFFFFFF" />
         </shape>
     </item>
-    <!-- Enabled state - 100% black -->
+    <!-- Enabled state - 100% white -->
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="26dp" />
-            <solid android:color="#000000" />
+            <solid android:color="#FFFFFF" />
         </shape>
     </item>
 </selector>
+

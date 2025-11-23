@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Cash App Brand Colors -->
-    <color name="color_primary_green">#00C244</color>
-    <color name="color_primary_green_light">#5AE48E</color>
+    <color name="color_primary_green">#0B1215</color>
+    <color name="color_primary_green_light">#0B1215</color>
     <color name="color_primary_purple">#8420F4</color>
     <color name="color_primary_blue">#83E8FC</color>
     <color name="color_primary_red">#FF4B4B</color>
