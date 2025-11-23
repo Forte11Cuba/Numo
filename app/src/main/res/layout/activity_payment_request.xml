@@ -139,7 +139,8 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/contactless"
-            android:rotation="270" />
+            android:rotation="270"
+            app:tint="@color/color_text_primary" />
 
         <TextView
             android:id="@+id/instruction_text"

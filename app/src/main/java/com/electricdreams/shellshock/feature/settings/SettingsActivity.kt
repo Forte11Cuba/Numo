@@ -14,6 +14,10 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<View?>(R.id.back_button)?.setOnClickListener { finish() }
 
+        findViewById<View>(R.id.theme_settings_item).setOnClickListener {
+            startActivity(Intent(this, ThemeSettingsActivity::class.java))
+        }
+
         findViewById<View>(R.id.currency_settings_item).setOnClickListener {
             startActivity(Intent(this, CurrencySettingsActivity::class.java))
         }

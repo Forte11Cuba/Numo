@@ -71,9 +71,6 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
     private var requestedAmount: Long = 0L
 
     private val mainHandler = Handler(Looper.getMainLooper())
-
-    private var themeMenuItem: MenuItem? = null
-    private var isNightMode: Boolean = false
     private var vibrator: Vibrator? = null
 
     private enum class AnimationType { NONE, DIGIT_ENTRY, CURRENCY_SWITCH }
@@ -83,10 +80,11 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Load dark mode setting (affects all screens except home screen)
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        isNightMode = prefs.getBoolean(KEY_NIGHT_MODE, false)
+        val isDarkMode = prefs.getBoolean(KEY_DARK_MODE, false)
         AppCompatDelegate.setDefaultNightMode(
-            if (isNightMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO,
+            if (isDarkMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO,
         )
 
         super.onCreate(savedInstanceState)
@@ -104,6 +102,9 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         inputModeContainer = findViewById(R.id.input_mode_container)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // Apply theme after views are initialized
+        applyTheme()
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
 
@@ -581,6 +582,10 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
 
     override fun onResume() {
         super.onResume()
+        
+        // Reapply theme when returning from settings
+        applyTheme()
+        
         nfcAdapter?.let { adapter ->
             val pendingIntent = PendingIntent.getActivity(
                 this, 0, Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_MUTABLE,
@@ -857,31 +862,14 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
-        themeMenuItem = menu.findItem(R.id.action_theme_toggle)
-        updateThemeIcon()
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         R.id.action_top_up -> { startActivity(Intent(this, TopUpActivity::class.java)); true }
         R.id.action_balance_check -> { startActivity(Intent(this, BalanceCheckActivity::class.java)); true }
-        R.id.action_theme_toggle -> { toggleTheme(); true }
         R.id.action_history -> { startActivity(Intent(this, PaymentsHistoryActivity::class.java)); true }
         else -> super.onOptionsItemSelected(item)
-    }
-
-    private fun toggleTheme() {
-        isNightMode = !isNightMode
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(KEY_NIGHT_MODE, isNightMode).apply()
-        AppCompatDelegate.setDefaultNightMode(if (isNightMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO)
-        updateThemeIcon()
-    }
-
-    private fun updateThemeIcon() {
-        themeMenuItem?.let { item ->
-            item.setIcon(if (isNightMode) R.drawable.ic_light_mode else R.drawable.ic_dark_mode)
-            item.title = if (isNightMode) "Switch to Light Mode" else "Switch to Dark Mode"
-        }
     }
 
     private fun showOverflowMenu(anchor: View) {
@@ -901,10 +889,86 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         if (!tokenString.isNullOrEmpty()) com.cashujdk.nut00.Token.decode(tokenString).mint else null
     } catch (_: Exception) { null }
 
+    private fun applyTheme() {
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val theme = prefs.getString("app_theme", "obsidian") ?: "obsidian"
+        val isDarkMode = prefs.getBoolean(KEY_DARK_MODE, false)
+        
+        // Get the actual root ConstraintLayout from the content view
+        val contentView = findViewById<android.view.ViewGroup>(android.R.id.content)
+        val rootLayout = contentView.getChildAt(0) as? androidx.constraintlayout.widget.ConstraintLayout
+        
+        val isWhiteTheme = (theme == "white")
+        
+        val backgroundColor = when (theme) {
+            "obsidian" -> android.graphics.Color.parseColor("#0B1215")
+            "bitcoin_orange" -> android.graphics.Color.parseColor("#F7931A")
+            "green" -> android.graphics.Color.parseColor("#00C244")
+            "white" -> android.graphics.Color.parseColor("#FFFFFF")
+            else -> android.graphics.Color.parseColor("#0B1215")
+        }
+        
+        // Text color: black ONLY for white theme, white for all other themes
+        // (Obsidian, Bitcoin Orange, Green should always have white text)
+        val textColor = if (isWhiteTheme) {
+            android.graphics.Color.parseColor("#0B1215")
+        } else {
+            android.graphics.Color.WHITE
+        }
+        
+        rootLayout?.setBackgroundColor(backgroundColor)
+        
+        // Update all text colors
+        amountDisplay.setTextColor(textColor)
+        secondaryAmountDisplay.setTextColor(textColor)
+        errorMessage.setTextColor(textColor)
+        
+        // Update currency switch icon tint
+        (switchCurrencyButton as? android.widget.ImageButton)?.setColorFilter(textColor)
+        
+        // Update top navigation icons - white when dark mode is on with colored themes
+        val topIconColor = if (isDarkMode && !isWhiteTheme) {
+            android.graphics.Color.WHITE
+        } else {
+            textColor
+        }
+        
+        findViewById<android.widget.ImageButton>(R.id.action_catalog)?.setColorFilter(topIconColor)
+        findViewById<android.widget.ImageButton>(R.id.action_history)?.setColorFilter(topIconColor)
+        findViewById<android.widget.ImageButton>(R.id.action_settings)?.setColorFilter(topIconColor)
+        
+        // Update keypad button colors
+        val keypad = findViewById<android.widget.GridLayout>(R.id.keypad)
+        for (i in 0 until keypad.childCount) {
+            val button = keypad.getChildAt(i) as? android.widget.Button
+            button?.setTextColor(textColor)
+        }
+        
+        // Update status bar and navigation bar colors to match background
+        window.statusBarColor = backgroundColor
+        window.navigationBarColor = backgroundColor
+        
+        // Update status bar appearance based on theme
+        val windowInsetsController = WindowInsetsControllerCompat(window, window.decorView)
+        windowInsetsController.isAppearanceLightStatusBars = isWhiteTheme
+        windowInsetsController.isAppearanceLightNavigationBars = isWhiteTheme
+        
+        // Update button color based on theme
+        if (isWhiteTheme) {
+            // Black button with white text for white theme
+            submitButton.setBackgroundResource(R.drawable.bg_button_primary_green)
+            submitButton.setTextColor(android.graphics.Color.WHITE)
+        } else {
+            // White button with black text for dark themes
+            submitButton.setBackgroundResource(R.drawable.bg_button_white)
+            submitButton.setTextColor(android.graphics.Color.BLACK)
+        }
+    }
+
     companion object {
         private const val TAG = "ModernPOSActivity"
         private const val PREFS_NAME = "ShellshockPrefs"
-        private const val KEY_NIGHT_MODE = "nightMode"
+        private const val KEY_DARK_MODE = "darkMode"
         private const val REQUEST_CODE_PAYMENT = 1001
         private val PATTERN_SUCCESS = longArrayOf(0, 50, 100, 50)
         private val PATTERN_ERROR = longArrayOf(0, 100)

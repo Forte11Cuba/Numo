@@ -1,20 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark Theme Colors -->
-    <color name="dark_colorPrimary">#121212</color>
-    <color name="dark_colorPrimaryDark">#000000</color>
-    <color name="dark_colorAccent">#BB86FC</color>
-    <color name="dark_textColorPrimary">#FFFFFF</color>
-    <color name="dark_textColorSecondary">#B3FFFFFF</color>
-    <color name="dark_windowBackground">#121212</color>
-    <color name="dark_surfaceColor">#1E1E1E</color>
-    <color name="dark_keypadButtonColor">#1E1E1E</color>
-    <color name="dark_keypadButtonPressedColor">#2D2D2D</color>
-    <color name="dark_keypadButtonTextColor">#FFFFFF</color>
-    <color name="dark_inputBoxStrokeColor">#FFFFFF</color>
+    <!-- Dark mode color overrides -->
+    <!-- When dark mode is enabled, these colors replace the default light mode colors -->
     
-    <!-- Action buttons in dark mode -->
-    <color name="dark_buttonBackground">#BB86FC</color>
-    <color name="dark_buttonText">#000000</color>
-    <color name="dark_iconTint">#BB86FC</color>
+    <!-- Primary Colors - WHITE for UI elements in dark mode -->
+    <color name="color_primary_green">#FFFFFF</color>
+    <color name="color_primary_green_light">#FFFFFF</color>
+    
+    <!-- Background Colors -->
+    <color name="color_bg_white">#0B1215</color>
+    <color name="color_bg_light">#1A1F23</color>
+    <color name="color_bg_secondary">#262D32</color>
+    <color name="color_search_bg">#1A1F23</color>
+    <color name="color_divider">#2D3439</color>
+
+    <!-- Text Colors -->
+    <color name="color_text_primary">#FFFFFF</color>
+    <color name="color_text_secondary">#B0B0B3</color>
+    <color name="color_text_tertiary">#808084</color>
+    <color name="color_icon_inactive">#505054</color>
+    <color name="color_icon_secondary">#B0B0B3</color>
+
+    <!-- Chip & Border Colors -->
+    <color name="color_chip_border">#3A3F44</color>
 </resources>
