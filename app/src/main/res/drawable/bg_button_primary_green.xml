@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Disabled state - grayed out -->
+    <!-- Disabled state - black with 20% opacity -->
     <item android:state_enabled="false">
         <shape android:shape="rectangle">
             <corners android:radius="26dp" />
-            <solid android:color="#3A3A3A" />
+            <solid android:color="#33000000" />
         </shape>
     </item>
-    <!-- Pressed state - slightly lighter -->
+    <!-- Pressed state - slightly lighter black -->
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
             <corners android:radius="26dp" />
             <solid android:color="#1A2529" />
         </shape>
     </item>
-    <!-- Enabled state - off-black primary color -->
+    <!-- Enabled state - 100% black -->
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="26dp" />
-            <solid android:color="@color/color_primary_green_light" />
+            <solid android:color="#000000" />
         </shape>
     </item>
 </selector>

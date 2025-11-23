@@ -953,15 +953,23 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         windowInsetsController.isAppearanceLightStatusBars = isWhiteTheme
         windowInsetsController.isAppearanceLightNavigationBars = isWhiteTheme
         
-        // Update button color based on theme
-        if (isWhiteTheme) {
-            // Black button with white text for white theme
-            submitButton.setBackgroundResource(R.drawable.bg_button_primary_green)
-            submitButton.setTextColor(android.graphics.Color.WHITE)
-        } else {
-            // White button with black text for dark themes
-            submitButton.setBackgroundResource(R.drawable.bg_button_white)
-            submitButton.setTextColor(android.graphics.Color.BLACK)
+        // Special button handling for Obsidian and White themes
+        when (theme) {
+            "white" -> {
+                // White theme: 100% black button with white text
+                submitButton.setBackgroundResource(R.drawable.bg_button_primary_green)
+                submitButton.setTextColor(android.graphics.Color.WHITE)
+            }
+            "obsidian" -> {
+                // Obsidian theme: 100% white button with black text (white when disabled)
+                submitButton.setBackgroundResource(R.drawable.bg_button_white)
+                submitButton.setTextColor(resources.getColorStateList(R.color.button_text_obsidian, null))
+            }
+            else -> {
+                // Bitcoin Orange, Green: use default opacity-based drawable
+                submitButton.setBackgroundResource(R.drawable.bg_button_charge)
+                submitButton.setTextColor(android.graphics.Color.WHITE)
+            }
         }
     }
 
