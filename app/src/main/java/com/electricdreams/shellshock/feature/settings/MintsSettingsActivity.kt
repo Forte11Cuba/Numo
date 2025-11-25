@@ -36,6 +36,7 @@ class MintsSettingsActivity : AppCompatActivity(),
     private lateinit var mintsAdapter: MintsAdapter
     private lateinit var newMintEditText: EditText
     private lateinit var addMintButton: Button
+    private lateinit var addMintLoading: View
     private lateinit var resetMintsButton: View
     private lateinit var mintManager: MintManager
 
@@ -50,6 +51,7 @@ class MintsSettingsActivity : AppCompatActivity(),
         mintsRecyclerView = findViewById(R.id.mints_recycler_view)
         newMintEditText = findViewById(R.id.new_mint_edit_text)
         addMintButton = findViewById(R.id.add_mint_button)
+        addMintLoading = findViewById(R.id.add_mint_loading)
         resetMintsButton = findViewById(R.id.reset_mints_button)
 
         mintsRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -132,10 +134,20 @@ class MintsSettingsActivity : AppCompatActivity(),
             return
         }
 
+        // Show loading spinner and disable button
+        addMintLoading.visibility = View.VISIBLE
+        addMintButton.isEnabled = false
+        newMintEditText.isEnabled = false
+
         // Validate the mint URL before adding
         lifecycleScope.launch {
             val isValid = validateMintUrl(mintUrl)
             if (!isValid) {
+                // Hide loading spinner and re-enable button
+                addMintLoading.visibility = View.GONE
+                addMintButton.isEnabled = true
+                newMintEditText.isEnabled = true
+                
                 Toast.makeText(
                     this@MintsSettingsActivity,
                     "Mint is not available or URL is wrong",
@@ -149,13 +161,21 @@ class MintsSettingsActivity : AppCompatActivity(),
                 mintsAdapter.updateMints(mintManager.getAllowedMints())
                 mintsAdapter.setPreferredLightningMint(mintManager.getPreferredLightningMint())
                 newMintEditText.setText("")
-                // Load balances and fetch mint info for the new mint
-                loadMintBalances()
+                
+                // Fetch mint info first, then update UI
                 fetchAndStoreMintInfo(mintUrl)
+                
+                // Load balances and notify adapter after mint info is fetched
+                loadMintBalances()
                 mintsAdapter.notifyDataSetChanged()
             } else {
                 Toast.makeText(this@MintsSettingsActivity, "Mint already in the list", Toast.LENGTH_SHORT).show()
             }
+            
+            // Hide loading spinner and re-enable button
+            addMintLoading.visibility = View.GONE
+            addMintButton.isEnabled = true
+            newMintEditText.isEnabled = true
         }
     }
 

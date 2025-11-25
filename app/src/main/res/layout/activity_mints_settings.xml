@@ -100,6 +100,15 @@
                     android:textAppearance="@style/Text.Body"
                     android:textSize="15sp" />
 
+                <ProgressBar
+                    android:id="@+id/add_mint_loading"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_gravity="center_vertical"
+                    android:indeterminate="true"
+                    android:visibility="gone" />
+
                 <Button
                     android:id="@+id/add_mint_button"
                     style="@style/Widget.Button.Secondary.Outlined"
