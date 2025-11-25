@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.cashudevkit.MeltOptions
+import org.cashudevkit.QuoteState
 import java.util.Date
 
 /**
@@ -170,13 +171,20 @@ class WithdrawMeltQuoteActivity : AppCompatActivity() {
 
                 // Check melt state
                 val state = melted.state
-                Log.d(TAG, "Melt state: $state")
+                Log.d(TAG, "Melt state after melt: $state")
+
+                // Check melt state
+                val meltQuote = withContext(Dispatchers.IO) {
+                    wallet.checkMeltQuote(org.cashudevkit.MintUrl(mintUrl), quoteId)
+                }
+
+                Log.d(TAG, "Melt state after check: $meltQuote.state")
 
                 withContext(Dispatchers.Main) {
                     setLoading(false)
 
-                    when (state.toString()) {
-                        "PAID" -> {
+                    when (meltQuote.state) {
+                        QuoteState.PAID  -> {
                             // Update history entry to completed
                             val updatedEntry = historyEntry.copy(
                                 rawStatus = PaymentHistoryEntry.STATUS_COMPLETED
@@ -186,14 +194,14 @@ class WithdrawMeltQuoteActivity : AppCompatActivity() {
                             // Show success activity
                             showPaymentSuccess()
                         }
-                        "UNPAID" -> {
+                        QuoteState.UNPAID -> {
                             // Remove from history
                             historyEntryId?.let {
                                 removeEntryFromHistory(it)
                             }
                             showPaymentError("Payment failed: Invoice not paid")
                         }
-                        "PENDING" -> {
+                        QuoteState.PENDING -> {
                             // Keep in history as pending
                             showPaymentError("Payment is pending. Please check back later.")
                         }

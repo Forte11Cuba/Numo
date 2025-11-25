@@ -55,6 +55,122 @@ object CashuWalletManager : MintManager.MintChangeListener {
         }
     }
 
+    /**
+     * Get the current wallet's mnemonic (seed phrase).
+     * Returns null if wallet hasn't been initialized.
+     */
+    fun getMnemonic(): String? {
+        if (!this::appContext.isInitialized) return null
+        val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_MNEMONIC, null)
+    }
+
+    /**
+     * Restore wallet with a new mnemonic.
+     * This will replace the current wallet with one derived from the provided seed phrase.
+     * @param newMnemonic The 12-word seed phrase to restore from
+     * @param onMintProgress Callback for progress updates: (mintUrl, status, balanceBefore, balanceAfter)
+     * @return Map of mint URLs to their balance changes (newBalance - oldBalance)
+     */
+    suspend fun restoreFromMnemonic(
+        newMnemonic: String,
+        onMintProgress: suspend (mintUrl: String, status: String, balanceBefore: Long, balanceAfter: Long) -> Unit
+    ): Map<String, Pair<Long, Long>> {
+        if (!this::appContext.isInitialized) {
+            throw IllegalStateException("CashuWalletManager not initialized")
+        }
+
+        val mintManager = MintManager.getInstance(appContext)
+        val mints = mintManager.getAllowedMints()
+        val balanceChanges = mutableMapOf<String, Pair<Long, Long>>()
+
+        // Get balances before restore
+        val balancesBefore = mutableMapOf<String, Long>()
+        for (mintUrl in mints) {
+            balancesBefore[mintUrl] = getBalanceForMint(mintUrl)
+        }
+
+        // Close existing wallet
+        try {
+            wallet?.close()
+        } catch (t: Throwable) {
+            Log.w(TAG, "Error closing wallet during restore", t)
+        }
+
+        try {
+            database?.close()
+        } catch (t: Throwable) {
+            Log.w(TAG, "Error closing database during restore", t)
+        }
+
+        wallet = null
+        database = null
+
+        // Delete existing database to start fresh
+        val dbFile = appContext.getDatabasePath(DB_FILE_NAME)
+        if (dbFile.exists()) {
+            dbFile.delete()
+            Log.d(TAG, "Deleted existing wallet database")
+        }
+
+        // Save new mnemonic
+        val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_MNEMONIC, newMnemonic).apply()
+        Log.i(TAG, "Saved new mnemonic for restore")
+
+        // Recreate database
+        dbFile.apply {
+            parentFile?.let { parent ->
+                if (!parent.exists()) {
+                    parent.mkdirs()
+                }
+            }
+        }
+        val db = WalletSqliteDatabase(dbFile.absolutePath)
+
+        // Create new wallet with restored mnemonic
+        val newWallet = MultiMintWallet(
+            CurrencyUnit.Sat,
+            newMnemonic,
+            db,
+        )
+
+        // Add mints and restore each one
+        val targetProofCount: UInt = 10u
+        for (mintUrl in mints) {
+            try {
+                onMintProgress(mintUrl, "Connecting...", balancesBefore[mintUrl] ?: 0L, 0L)
+                
+                newWallet.addMint(MintUrl(mintUrl), targetProofCount)
+                
+                onMintProgress(mintUrl, "Restoring proofs...", balancesBefore[mintUrl] ?: 0L, 0L)
+                
+                // Use CDK's restore function to recover proofs
+                val recoveredAmount = newWallet.restore(MintUrl(mintUrl))
+                val newBalance = recoveredAmount.value.toLong()
+                val oldBalance = balancesBefore[mintUrl] ?: 0L
+                
+                balanceChanges[mintUrl] = Pair(oldBalance, newBalance)
+                
+                onMintProgress(mintUrl, "Complete", oldBalance, newBalance)
+                
+                Log.d(TAG, "Restored mint $mintUrl: before=$oldBalance, after=$newBalance")
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to restore mint $mintUrl", t)
+                val oldBalance = balancesBefore[mintUrl] ?: 0L
+                balanceChanges[mintUrl] = Pair(oldBalance, 0L)
+                onMintProgress(mintUrl, "Failed: ${t.message}", oldBalance, 0L)
+            }
+        }
+
+        database = db
+        wallet = newWallet
+
+        Log.d(TAG, "Wallet restore complete. Restored ${mints.size} mints.")
+        
+        return balanceChanges
+    }
+
     override fun onMintsChanged(newMints: List<String>) {
         Log.d(TAG, "Mint list changed, rebuilding wallet with ${'$'}{newMints.size} mints")
         scope.launch {
@@ -158,8 +274,10 @@ object CashuWalletManager : MintManager.MintChangeListener {
 
             // 1) Open or create the on-disk SQLite database.
             val dbFile = appContext.getDatabasePath(DB_FILE_NAME).apply {
-                if (!parentFile.exists()) {
-                    parentFile.mkdirs()
+                parentFile?.let { parent ->
+                    if (!parent.exists()) {
+                        parent.mkdirs()
+                    }
                 }
             }
             val db = WalletSqliteDatabase(dbFile.absolutePath)

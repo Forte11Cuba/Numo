@@ -194,6 +194,39 @@
                 android:value=".feature.settings.SettingsActivity" />
         </activity>
         
+        <activity android:name="com.electricdreams.shellshock.feature.settings.SecuritySettingsActivity"
+            android:exported="false"
+            android:label="Security &amp; Privacy"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SettingsActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.settings.SeedPhraseActivity"
+            android:exported="false"
+            android:label="Seed Phrase"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SecuritySettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SecuritySettingsActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.settings.RestoreWalletActivity"
+            android:exported="false"
+            android:label="Restore Wallet"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SecuritySettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SecuritySettingsActivity" />
+        </activity>
+        
         <!-- Withdraw Activities -->
         <activity android:name="com.electricdreams.shellshock.feature.settings.WithdrawLightningActivity"
             android:exported="false"
