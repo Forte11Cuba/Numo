@@ -113,22 +113,41 @@ class PosUiCoordinator(
         nfcPaymentProcessor.handleNfcPayment(tag, amountDisplayManager.requestedAmount)
     }
 
-    /** Handle payment result success */
-    fun handlePaymentSuccess(token: String, amount: Long) {
-        paymentResultHandler.handlePaymentSuccess(
-            token, 
-            amount, 
-            amountDisplayManager.isUsdInputMode
-        ) {
-            resetToInputMode()
-        }
-    }
-
     /** Handle payment result error */
     fun handlePaymentError(message: String) {
         paymentResultHandler.handlePaymentError(message) {
             resetToInputMode()
         }
+    }
+
+    /**
+     * Unified success handler - plays feedback and shows success screen.
+     * This is the single source of truth for all payment success handling.
+     */
+    private fun showPaymentSuccess(token: String, amount: Long) {
+        // Play success sound
+        try {
+            val mediaPlayer = android.media.MediaPlayer.create(activity, R.raw.success_sound)
+            mediaPlayer?.setOnCompletionListener { it.release() }
+            mediaPlayer?.start()
+        } catch (e: Exception) {
+            android.util.Log.e("PosUiCoordinator", "Error playing success sound: ${e.message}")
+        }
+        
+        // Vibrate
+        try {
+            val vibrator = activity.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator?
+            vibrator?.vibrate(PATTERN_SUCCESS, -1)
+        } catch (e: Exception) {
+            android.util.Log.e("PosUiCoordinator", "Error vibrating: ${e.message}")
+        }
+
+        // Show success screen
+        val successIntent = android.content.Intent(activity, com.electricdreams.shellshock.PaymentReceivedActivity::class.java).apply {
+            putExtra(com.electricdreams.shellshock.PaymentReceivedActivity.EXTRA_TOKEN, token)
+            putExtra(com.electricdreams.shellshock.PaymentReceivedActivity.EXTRA_AMOUNT, amount)
+        }
+        activity.startActivity(successIntent)
     }
 
     /** Stop services */
@@ -138,6 +157,10 @@ class PosUiCoordinator(
 
     /** Get requested amount */
     fun getRequestedAmount(): Long = amountDisplayManager.requestedAmount
+
+    companion object {
+        private val PATTERN_SUCCESS = longArrayOf(0, 50, 100, 50)
+    }
 
     private fun initializeViews() {
         amountDisplay = activity.findViewById(R.id.amount_display)
@@ -183,7 +206,9 @@ class PosUiCoordinator(
                     token, 
                     amountDisplayManager.requestedAmount, 
                     amountDisplayManager.isUsdInputMode
-                ) {
+                ) { resultToken, resultAmount ->
+                    // Use unified success handler
+                    showPaymentSuccess(resultToken, resultAmount)
                     resetToInputMode()
                 }
             },
