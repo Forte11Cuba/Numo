@@ -26,6 +26,7 @@
 
     <!-- Status & Semantic Colors -->
     <color name="color_success_green">#00C244</color>
+    <color name="color_warning">#FF9500</color>
     <color name="color_warning_red">#FF4B4B</color>
     <color name="color_info_blue">#83E8FC</color>
 

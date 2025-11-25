@@ -40,7 +40,7 @@ class LightningMintHandler(
      */
     interface Callback {
         /** Called when a Lightning invoice (BOLT11) is ready for display */
-        fun onInvoiceReady(bolt11: String)
+        fun onInvoiceReady(bolt11: String, quoteId: String, mintUrl: String)
         
         /** Called when the Lightning payment is successful and proofs are minted */
         fun onPaymentSuccess()
@@ -50,6 +50,7 @@ class LightningMintHandler(
     }
 
     private var mintQuote: MintQuote? = null
+    private var currentMintUrl: String? = null
     private var mintJob: Job? = null
 
     // Shared OkHttp client for mint WebSocket connections
@@ -64,6 +65,12 @@ class LightningMintHandler(
 
     /** The current BOLT11 invoice string, if available */
     val currentInvoice: String? get() = mintQuote?.request
+
+    /** The current quote ID, if available */
+    val currentQuoteId: String? get() = mintQuote?.id
+
+    /** The mint URL being used for the current quote */
+    val mintUrlString: String? get() = currentMintUrl
 
     /**
      * Start the Lightning mint flow for the specified amount.
@@ -86,13 +93,16 @@ class LightningMintHandler(
         }
 
         // For now pick the first allowed mint; could be randomized/rotated later
+        val mintUrlStr = allowedMints.first()
         val mintUrl = try {
-            MintUrl(allowedMints.first())
+            MintUrl(mintUrlStr)
         } catch (t: Throwable) {
-            Log.e(TAG, "Invalid mint URL for Lightning mint: ${allowedMints.first()}", t)
+            Log.e(TAG, "Invalid mint URL for Lightning mint: $mintUrlStr", t)
             callback.onError("Invalid mint URL")
             return
         }
+
+        currentMintUrl = mintUrlStr
 
         mintJob?.cancel()
         mintJob = uiScope.launch(Dispatchers.IO) {
@@ -107,9 +117,9 @@ class LightningMintHandler(
                 val bolt11 = quote.request
                 Log.d(TAG, "Received Lightning mint quote id=${quote.id} bolt11=$bolt11")
 
-                // Notify UI that invoice is ready
+                // Notify UI that invoice is ready with full quote info
                 launch(Dispatchers.Main) {
-                    callback.onInvoiceReady(bolt11)
+                    callback.onInvoiceReady(bolt11, quote.id, mintUrlStr)
                 }
 
                 // Subscribe to mint quote state updates via WebSocket (NUT-17)
@@ -131,6 +141,68 @@ class LightningMintHandler(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in Lightning mint flow: ${e.message}", e)
+                launch(Dispatchers.Main) {
+                    callback.onError(e.message ?: "Unknown error")
+                }
+            }
+        }
+    }
+
+    /**
+     * Resume monitoring an existing Lightning mint quote.
+     * Used when reopening a pending payment from history.
+     *
+     * @param quoteId The existing quote ID
+     * @param mintUrlStr The mint URL as a string
+     * @param invoice The BOLT11 invoice string
+     * @param callback Callback for Lightning mint events
+     */
+    fun resume(quoteId: String, mintUrlStr: String, invoice: String, callback: Callback) {
+        val wallet = CashuWalletManager.getWallet()
+        if (wallet == null) {
+            Log.w(TAG, "MultiMintWallet not ready, cannot resume Lightning quote")
+            callback.onError("Wallet not ready")
+            return
+        }
+
+        val mintUrl = try {
+            MintUrl(mintUrlStr)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Invalid mint URL for resume: $mintUrlStr", t)
+            callback.onError("Invalid mint URL")
+            return
+        }
+
+        currentMintUrl = mintUrlStr
+
+        mintJob?.cancel()
+        mintJob = uiScope.launch(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Resuming Lightning mint quote monitoring for id=$quoteId")
+
+                // Notify UI that invoice is ready (for display)
+                launch(Dispatchers.Main) {
+                    callback.onInvoiceReady(invoice, quoteId, mintUrlStr)
+                }
+
+                // Subscribe to mint quote state updates via WebSocket (NUT-17)
+                try {
+                    Log.d(TAG, "Subscribing to Lightning mint quote state via WebSocket for id=$quoteId")
+                    awaitMintQuotePaid(mintUrl, quoteId)
+                } catch (ce: CancellationException) {
+                    Log.d(TAG, "Lightning mint resume cancelled while waiting on WebSocket: ${ce.message}")
+                    return@launch
+                }
+
+                Log.d(TAG, "Mint quote $quoteId is paid according to WS, calling wallet.mint")
+                val proofs = wallet.mint(mintUrl, quoteId, null)
+                Log.d(TAG, "Lightning mint completed with ${proofs.size} proofs (resumed Lightning payment)")
+
+                launch(Dispatchers.Main) {
+                    callback.onPaymentSuccess()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in resumed Lightning mint flow: ${e.message}", e)
                 launch(Dispatchers.Main) {
                     callback.onError(e.message ?: "Unknown error")
                 }
@@ -315,4 +387,3 @@ class LightningMintHandler(
         private const val TAG = "LightningMintHandler"
     }
 }
-

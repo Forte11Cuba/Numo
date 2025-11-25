@@ -12,11 +12,13 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.electricdreams.shellshock.core.data.model.PaymentHistoryEntry
 import com.electricdreams.shellshock.core.model.Amount
 import com.electricdreams.shellshock.core.model.Amount.Currency
 import com.electricdreams.shellshock.core.util.MintManager
 import com.electricdreams.shellshock.core.worker.BitcoinPriceWorker
 import com.electricdreams.shellshock.core.util.CurrencyManager
+import com.electricdreams.shellshock.feature.history.PaymentsHistoryActivity
 import com.electricdreams.shellshock.ndef.CashuPaymentHelper
 import com.electricdreams.shellshock.ndef.NdefHostCardEmulationService
 import com.electricdreams.shellshock.nostr.NostrKeyPair
@@ -49,6 +51,7 @@ class PaymentRequestActivity : AppCompatActivity() {
     private var hcePaymentRequest: String? = null
     private var qrPaymentRequest: String? = null
     private var nostrListener: NostrPaymentListener? = null
+    private var formattedAmountString: String = ""
 
     // Tab manager for Cashu/Lightning tab switching
     private lateinit var tabManager: PaymentTabManager
@@ -56,6 +59,20 @@ class PaymentRequestActivity : AppCompatActivity() {
     // Lightning mint handler
     private var lightningHandler: LightningMintHandler? = null
     private var lightningStarted = false
+
+    // Lightning quote info for history
+    private var lightningInvoice: String? = null
+    private var lightningQuoteId: String? = null
+    private var lightningMintUrl: String? = null
+
+    // Pending payment tracking
+    private var pendingPaymentId: String? = null
+    private var isResumingPayment = false
+    
+    // Resume data for Lightning
+    private var resumeLightningQuoteId: String? = null
+    private var resumeLightningMintUrl: String? = null
+    private var resumeLightningInvoice: String? = null
 
     private val uiScope = CoroutineScope(Dispatchers.Main)
 
@@ -119,8 +136,17 @@ class PaymentRequestActivity : AppCompatActivity() {
         }
 
         // Get formatted amount string if provided, otherwise format as BTC
-        val formattedAmountString = intent.getStringExtra(EXTRA_FORMATTED_AMOUNT)
+        formattedAmountString = intent.getStringExtra(EXTRA_FORMATTED_AMOUNT)
             ?: Amount(paymentAmount, Currency.BTC).toString()
+
+        // Check if we're resuming a pending payment
+        pendingPaymentId = intent.getStringExtra(EXTRA_RESUME_PAYMENT_ID)
+        isResumingPayment = pendingPaymentId != null
+
+        // Get resume data for Lightning if available
+        resumeLightningQuoteId = intent.getStringExtra(EXTRA_LIGHTNING_QUOTE_ID)
+        resumeLightningMintUrl = intent.getStringExtra(EXTRA_LIGHTNING_MINT_URL)
+        resumeLightningInvoice = intent.getStringExtra(EXTRA_LIGHTNING_INVOICE)
 
         // Display amount (without "Pay" prefix since it's in the label above)
         largeAmountDisplay.text = formattedAmountString
@@ -136,7 +162,7 @@ class PaymentRequestActivity : AppCompatActivity() {
 
         shareButton.setOnClickListener {
             // By default, share the Cashu (Nostr) payment request; fall back to Lightning invoice
-            val toShare = qrPaymentRequest ?: lightningHandler?.currentInvoice
+            val toShare = qrPaymentRequest ?: lightningHandler?.currentInvoice ?: lightningInvoice
             if (toShare != null) {
                 sharePaymentRequest(toShare)
             } else {
@@ -144,8 +170,44 @@ class PaymentRequestActivity : AppCompatActivity() {
             }
         }
 
+        // Create pending payment entry if this is a new payment (not resuming)
+        if (!isResumingPayment) {
+            createPendingPayment()
+        }
+
         // Initialize all payment modes (NDEF, Nostr, Lightning)
         initializePaymentRequest()
+
+        // If resuming and we have Lightning data, auto-switch to Lightning tab
+        if (isResumingPayment && resumeLightningQuoteId != null) {
+            tabManager.selectLightningTab()
+        }
+    }
+
+    private fun createPendingPayment() {
+        val entryUnit = if (formattedAmountString.startsWith("₿")) "sat" else 
+            CurrencyManager.getInstance(this).getCurrentCurrency()
+        
+        val enteredAmount = if (entryUnit == "sat") {
+            paymentAmount
+        } else {
+            val fiatValue = bitcoinPriceWorker?.satoshisToFiat(paymentAmount) ?: 0.0
+            (fiatValue * 100).toLong() // Convert to cents
+        }
+
+        val bitcoinPrice = bitcoinPriceWorker?.getCurrentPrice()?.takeIf { it > 0 }
+
+        pendingPaymentId = PaymentsHistoryActivity.addPendingPayment(
+            context = this,
+            amount = paymentAmount,
+            entryUnit = entryUnit,
+            enteredAmount = enteredAmount,
+            bitcoinPrice = bitcoinPrice,
+            paymentRequest = null, // Will be set after payment request is created
+            formattedAmount = formattedAmountString,
+        )
+
+        Log.d(TAG, "Created pending payment with id=$pendingPaymentId")
     }
 
     private fun updateConvertedAmount(formattedAmountString: String) {
@@ -280,9 +342,42 @@ class PaymentRequestActivity : AppCompatActivity() {
 
     private fun startLightningMintFlow() {
         lightningStarted = true
-        
-        lightningHandler?.start(paymentAmount, object : LightningMintHandler.Callback {
-            override fun onInvoiceReady(bolt11: String) {
+
+        // Check if we're resuming with existing Lightning quote
+        if (resumeLightningQuoteId != null && resumeLightningMintUrl != null && resumeLightningInvoice != null) {
+            Log.d(TAG, "Resuming Lightning quote: id=$resumeLightningQuoteId")
+            
+            lightningHandler?.resume(
+                quoteId = resumeLightningQuoteId!!,
+                mintUrlStr = resumeLightningMintUrl!!,
+                invoice = resumeLightningInvoice!!,
+                callback = createLightningCallback()
+            )
+        } else {
+            // Start fresh Lightning flow
+            lightningHandler?.start(paymentAmount, createLightningCallback())
+        }
+    }
+
+    private fun createLightningCallback(): LightningMintHandler.Callback {
+        return object : LightningMintHandler.Callback {
+            override fun onInvoiceReady(bolt11: String, quoteId: String, mintUrl: String) {
+                // Store for history
+                lightningInvoice = bolt11
+                lightningQuoteId = quoteId
+                lightningMintUrl = mintUrl
+
+                // Update pending payment with Lightning info
+                pendingPaymentId?.let { paymentId ->
+                    PaymentsHistoryActivity.updatePendingWithLightningInfo(
+                        context = this@PaymentRequestActivity,
+                        paymentId = paymentId,
+                        lightningInvoice = bolt11,
+                        lightningQuoteId = quoteId,
+                        lightningMintUrl = mintUrl,
+                    )
+                }
+
                 try {
                     val qrBitmap = QrCodeGenerator.generate(bolt11, 512)
                     lightningQrImageView.setImageBitmap(qrBitmap)
@@ -311,7 +406,7 @@ class PaymentRequestActivity : AppCompatActivity() {
                     ).show()
                 }
             }
-        })
+        }
     }
 
     private fun setupNdefPayment() {
@@ -393,6 +488,24 @@ class PaymentRequestActivity : AppCompatActivity() {
         statusText.visibility = View.VISIBLE
         statusText.text = "Payment successful!"
 
+        // Extract mint URL from token
+        val mintUrl = try {
+            com.cashujdk.nut00.Token.decode(token).mint
+        } catch (e: Exception) {
+            null
+        }
+
+        // Update pending payment to completed
+        pendingPaymentId?.let { paymentId ->
+            PaymentsHistoryActivity.completePendingPayment(
+                context = this,
+                paymentId = paymentId,
+                token = token,
+                paymentType = PaymentHistoryEntry.TYPE_CASHU,
+                mintUrl = mintUrl,
+            )
+        }
+
         val resultIntent = Intent().apply {
             putExtra(RESULT_EXTRA_TOKEN, token)
             putExtra(RESULT_EXTRA_AMOUNT, paymentAmount)
@@ -413,6 +526,20 @@ class PaymentRequestActivity : AppCompatActivity() {
 
         statusText.visibility = View.VISIBLE
         statusText.text = "Payment successful!"
+
+        // Update pending payment to completed with Lightning info
+        pendingPaymentId?.let { paymentId ->
+            PaymentsHistoryActivity.completePendingPayment(
+                context = this,
+                paymentId = paymentId,
+                token = "",
+                paymentType = PaymentHistoryEntry.TYPE_LIGHTNING,
+                mintUrl = lightningMintUrl,
+                lightningInvoice = lightningInvoice,
+                lightningQuoteId = lightningQuoteId,
+                lightningMintUrl = lightningMintUrl,
+            )
+        }
 
         val resultIntent = Intent().apply {
             putExtra(RESULT_EXTRA_TOKEN, "")
@@ -439,6 +566,9 @@ class PaymentRequestActivity : AppCompatActivity() {
 
     private fun cancelPayment() {
         Log.d(TAG, "Payment cancelled")
+
+        // Note: We don't cancel the pending payment here - user might want to resume it later
+        // Only cancel if explicitly requested or if it's an error
 
         setResult(Activity.RESULT_CANCELED)
         cleanupAndFinish()
@@ -491,6 +621,12 @@ class PaymentRequestActivity : AppCompatActivity() {
         const val EXTRA_FORMATTED_AMOUNT = "formatted_amount"
         const val RESULT_EXTRA_TOKEN = "payment_token"
         const val RESULT_EXTRA_AMOUNT = "payment_amount"
+
+        // Extras for resuming pending payments
+        const val EXTRA_RESUME_PAYMENT_ID = "resume_payment_id"
+        const val EXTRA_LIGHTNING_QUOTE_ID = "lightning_quote_id"
+        const val EXTRA_LIGHTNING_MINT_URL = "lightning_mint_url"
+        const val EXTRA_LIGHTNING_INVOICE = "lightning_invoice"
 
         // Nostr relays to use for NIP-17 gift-wrapped DMs
         private val NOSTR_RELAYS = arrayOf(
