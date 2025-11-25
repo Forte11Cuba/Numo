@@ -165,7 +165,7 @@ class WithdrawMeltQuoteActivity : AppCompatActivity() {
 
                 // Execute melt operation
                 val melted = withContext(Dispatchers.IO) {
-                    wallet.melt(request, null, null)
+                    wallet.meltWithMint(org.cashudevkit.MintUrl(mintUrl), quoteId)
                 }
 
                 // Check melt state

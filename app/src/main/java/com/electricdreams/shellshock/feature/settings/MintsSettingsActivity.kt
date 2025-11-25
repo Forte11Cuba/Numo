@@ -19,6 +19,9 @@ import com.electricdreams.shellshock.ui.adapter.MintsAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.net.URL
 
 class MintsSettingsActivity : AppCompatActivity(), 
     MintsAdapter.MintRemoveListener,
@@ -129,18 +132,30 @@ class MintsSettingsActivity : AppCompatActivity(),
             return
         }
 
-        val added = mintManager.addMint(mintUrl)
-        if (added) {
-            mintsAdapter.updateMints(mintManager.getAllowedMints())
-            newMintEditText.setText("")
-            // Load balances and fetch mint info for the new mint
-            loadMintBalances()
-            lifecycleScope.launch {
+        // Validate the mint URL before adding
+        lifecycleScope.launch {
+            val isValid = validateMintUrl(mintUrl)
+            if (!isValid) {
+                Toast.makeText(
+                    this@MintsSettingsActivity,
+                    "Mint is not available or URL is wrong",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
+
+            val added = mintManager.addMint(mintUrl)
+            if (added) {
+                mintsAdapter.updateMints(mintManager.getAllowedMints())
+                mintsAdapter.setPreferredLightningMint(mintManager.getPreferredLightningMint())
+                newMintEditText.setText("")
+                // Load balances and fetch mint info for the new mint
+                loadMintBalances()
                 fetchAndStoreMintInfo(mintUrl)
                 mintsAdapter.notifyDataSetChanged()
+            } else {
+                Toast.makeText(this@MintsSettingsActivity, "Mint already in the list", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            Toast.makeText(this, "Mint already in the list", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -173,5 +188,53 @@ class MintsSettingsActivity : AppCompatActivity(),
         intent.putExtra("mint_url", mintUrl)
         intent.putExtra("balance", balance)
         startActivity(intent)
+    }
+
+    /**
+     * Validate a mint URL by checking if the /v1/info endpoint returns a 200 status.
+     * Normalizes the URL before checking.
+     */
+    private suspend fun validateMintUrl(rawUrl: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // Normalize the URL
+            var normalizedUrl = rawUrl.trim()
+            
+            // Add https:// if no protocol specified
+            if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+                normalizedUrl = "https://$normalizedUrl"
+            }
+            
+            // Remove trailing slash if present
+            if (normalizedUrl.endsWith("/")) {
+                normalizedUrl = normalizedUrl.dropLast(1)
+            }
+            
+            // Construct the info endpoint URL
+            val infoUrl = "$normalizedUrl/v1/info"
+            
+            Log.d(TAG, "Validating mint URL: $infoUrl")
+            
+            // Make HTTP GET request
+            val client = OkHttpClient.Builder()
+                .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+            
+            val request = Request.Builder()
+                .url(infoUrl)
+                .get()
+                .build()
+            
+            val response = client.newCall(request).execute()
+            val isValid = response.isSuccessful && response.code == 200
+            
+            Log.d(TAG, "Mint validation result: $isValid (status code: ${response.code})")
+            response.close()
+            
+            isValid
+        } catch (e: Exception) {
+            Log.e(TAG, "Error validating mint URL: ${e.message}", e)
+            false
+        }
     }
 }

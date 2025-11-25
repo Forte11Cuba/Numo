@@ -271,11 +271,10 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
                     }
                 });
                 
-                // Disable withdraw button if balance is 0 or loading
+                // Hide withdraw button if balance is 0 or loading
                 Boolean isCurrentlyLoading = loadingStates.get(mintUrl);
-                boolean shouldEnable = balanceValue > 0 && (isCurrentlyLoading == null || !isCurrentlyLoading);
-                withdrawButton.setEnabled(shouldEnable);
-                withdrawButton.setAlpha(shouldEnable ? 1.0f : 0.5f);
+                boolean shouldShow = balanceValue > 0 && (isCurrentlyLoading == null || !isCurrentlyLoading);
+                withdrawButton.setVisibility(shouldShow ? View.VISIBLE : View.GONE);
             }
         }
     }

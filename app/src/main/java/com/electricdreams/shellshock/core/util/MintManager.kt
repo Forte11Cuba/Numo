@@ -137,6 +137,13 @@ class MintManager private constructor(context: Context) {
         val changed = allowedMints.add(url)
 
         if (changed) {
+            // If this is the only mint, automatically set it as the preferred Lightning mint
+            if (allowedMints.size == 1) {
+                preferredLightningMint = url
+                savePreferredLightningMint()
+                Log.d(TAG, "Automatically set first mint as preferred Lightning mint: $url")
+            }
+            
             saveChanges()
             Log.d(TAG, "Added mint to allowed list: $url")
             listener?.onMintsChanged(getAllowedMints())
