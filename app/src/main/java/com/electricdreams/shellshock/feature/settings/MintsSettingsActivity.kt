@@ -22,7 +22,8 @@ import kotlinx.coroutines.withContext
 
 class MintsSettingsActivity : AppCompatActivity(), 
     MintsAdapter.MintRemoveListener,
-    MintsAdapter.LightningMintSelectedListener {
+    MintsAdapter.LightningMintSelectedListener,
+    MintsAdapter.WithdrawListener {
 
     companion object {
         private const val TAG = "MintsSettingsActivity"
@@ -55,7 +56,8 @@ class MintsSettingsActivity : AppCompatActivity(),
             mintManager.getAllowedMints(), 
             this,
             this,
-            mintManager.getPreferredLightningMint()
+            mintManager.getPreferredLightningMint(),
+            this
         )
         mintsRecyclerView.adapter = mintsAdapter
         
@@ -164,5 +166,12 @@ class MintsSettingsActivity : AppCompatActivity(),
             mintsAdapter.setPreferredLightningMint(mintUrl)
             Toast.makeText(this, "Lightning payments will use this mint", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onWithdrawClicked(mintUrl: String, balance: Long) {
+        val intent = android.content.Intent(this, com.electricdreams.shellshock.feature.settings.WithdrawLightningActivity::class.java)
+        intent.putExtra("mint_url", mintUrl)
+        intent.putExtra("balance", balance)
+        startActivity(intent)
     }
 }

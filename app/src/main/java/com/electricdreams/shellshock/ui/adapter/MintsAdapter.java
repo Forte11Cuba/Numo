@@ -28,6 +28,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
     private List<String> mints;
     private final MintRemoveListener removeListener;
     private final LightningMintSelectedListener lightningListener;
+    private final WithdrawListener withdrawListener;
     private String preferredLightningMint;
     private Map<String, Long> mintBalances = new HashMap<>();
     private Map<String, Boolean> loadingStates = new HashMap<>();
@@ -47,6 +48,13 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         void onLightningMintSelected(String mintUrl);
     }
     
+    /**
+     * Interface for handling withdraw button clicks
+     */
+    public interface WithdrawListener {
+        void onWithdrawClicked(String mintUrl, long balance);
+    }
+    
     public MintsAdapter(Context context, List<String> mints, MintRemoveListener listener) {
         this(context, mints, listener, null, null);
     }
@@ -54,9 +62,17 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
     public MintsAdapter(Context context, List<String> mints, MintRemoveListener removeListener, 
                        @Nullable LightningMintSelectedListener lightningListener,
                        @Nullable String preferredLightningMint) {
+        this(context, mints, removeListener, lightningListener, preferredLightningMint, null);
+    }
+    
+    public MintsAdapter(Context context, List<String> mints, MintRemoveListener removeListener, 
+                       @Nullable LightningMintSelectedListener lightningListener,
+                       @Nullable String preferredLightningMint,
+                       @Nullable WithdrawListener withdrawListener) {
         this.mints = mints;
         this.removeListener = removeListener;
         this.lightningListener = lightningListener;
+        this.withdrawListener = withdrawListener;
         this.preferredLightningMint = preferredLightningMint;
         this.mintManager = MintManager.getInstance(context);
         // Initialize all mints as loading
@@ -180,6 +196,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         private final ProgressBar balanceLoading;
         private final ImageButton removeButton;
         private final RadioButton lightningRadio;
+        private final View withdrawButton;
         
         public MintViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -189,6 +206,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
             balanceLoading = itemView.findViewById(R.id.balance_loading);
             removeButton = itemView.findViewById(R.id.remove_mint_button);
             lightningRadio = itemView.findViewById(R.id.lightning_mint_radio);
+            withdrawButton = itemView.findViewById(R.id.withdraw_button);
         }
         
         public void bind(String mintUrl) {
@@ -241,6 +259,24 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
                     .setNegativeButton("Cancel", null)
                     .show();
             });
+            
+            // Set up withdraw button
+            Long balance = mintBalances.get(mintUrl);
+            long balanceValue = balance != null ? balance : 0L;
+            
+            if (withdrawButton != null) {
+                withdrawButton.setOnClickListener(v -> {
+                    if (withdrawListener != null) {
+                        withdrawListener.onWithdrawClicked(mintUrl, balanceValue);
+                    }
+                });
+                
+                // Disable withdraw button if balance is 0 or loading
+                Boolean isCurrentlyLoading = loadingStates.get(mintUrl);
+                boolean shouldEnable = balanceValue > 0 && (isCurrentlyLoading == null || !isCurrentlyLoading);
+                withdrawButton.setEnabled(shouldEnable);
+                withdrawButton.setAlpha(shouldEnable ? 1.0f : 0.5f);
+            }
         }
     }
 }

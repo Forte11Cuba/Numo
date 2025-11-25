@@ -105,6 +105,20 @@
 
         </LinearLayout>
 
+        <!-- Withdraw button -->
+        <Button
+            android:id="@+id/withdraw_button"
+            style="@style/Widget.Button.Secondary.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginTop="8dp"
+            android:minHeight="32dp"
+            android:paddingHorizontal="16dp"
+            android:text="Withdraw"
+            android:textSize="13sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/balance_container" />
+
         <!-- Remove button -->
         <ImageButton
             android:id="@+id/remove_mint_button"
