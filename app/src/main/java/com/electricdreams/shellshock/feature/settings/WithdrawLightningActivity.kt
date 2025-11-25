@@ -1,6 +1,7 @@
 package com.electricdreams.shellshock.feature.settings
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -33,11 +34,14 @@ class WithdrawLightningActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "WithdrawLightning"
         private const val FEE_BUFFER_PERCENT = 0.02 // 2% buffer for fees
+        private const val PREFS_NAME = "WithdrawLightningPreferences"
+        private const val KEY_LAST_LIGHTNING_ADDRESS = "lastLightningAddress"
     }
 
     private lateinit var mintUrl: String
     private var balance: Long = 0
     private lateinit var mintManager: MintManager
+    private lateinit var preferences: SharedPreferences
 
     // Views
     private lateinit var backButton: ImageButton
@@ -64,6 +68,7 @@ class WithdrawLightningActivity : AppCompatActivity() {
         mintUrl = intent.getStringExtra("mint_url") ?: ""
         balance = intent.getLongExtra("balance", 0)
         mintManager = MintManager.getInstance(this)
+        preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
         if (mintUrl.isEmpty()) {
             Toast.makeText(this, "Invalid mint URL", Toast.LENGTH_SHORT).show()
@@ -74,6 +79,7 @@ class WithdrawLightningActivity : AppCompatActivity() {
         initViews()
         setupListeners()
         displayMintInfo()
+        prefillFields()
     }
 
     private fun initViews() {
@@ -174,6 +180,20 @@ class WithdrawLightningActivity : AppCompatActivity() {
 
         val balanceAmount = Amount(balance, Amount.Currency.BTC)
         balanceText.text = balanceAmount.toString()
+    }
+
+    private fun prefillFields() {
+        // Pre-fill lightning address from preferences
+        val lastAddress = preferences.getString(KEY_LAST_LIGHTNING_ADDRESS, "")
+        if (!lastAddress.isNullOrEmpty()) {
+            addressInput.setText(lastAddress)
+        }
+
+        // Pre-fill amount with balance - 2%
+        val suggestedAmount = (balance * (1 - FEE_BUFFER_PERCENT)).toLong()
+        if (suggestedAmount > 0) {
+            amountInput.setText(suggestedAmount.toString())
+        }
     }
 
     private fun processInvoice() {
@@ -278,6 +298,9 @@ class WithdrawLightningActivity : AppCompatActivity() {
                         ).show()
                         return@withContext
                     }
+
+                    // Save the lightning address to preferences
+                    preferences.edit().putString(KEY_LAST_LIGHTNING_ADDRESS, address).apply()
 
                     // Launch melt quote activity
                     launchMeltQuoteActivity(meltQuote, null, address)
