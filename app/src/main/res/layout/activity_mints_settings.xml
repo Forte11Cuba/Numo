@@ -62,7 +62,7 @@
                 android:layout_marginBottom="4dp"
                 android:text="ALLOWED MINTS"
                 android:textAppearance="@style/Text.SectionHeader" />
-            
+
             <!-- Lightning mint hint -->
             <TextView
                 android:layout_width="match_parent"

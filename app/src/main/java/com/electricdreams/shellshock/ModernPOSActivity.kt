@@ -149,6 +149,9 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == PaymentMethodHandler.REQUEST_CODE_PAYMENT) {
+            // Hide spinner regardless of result (success, cancel, or error)
+            uiCoordinator.hideChargeButtonSpinner()
+            
             if (resultCode == Activity.RESULT_OK && data != null) {
                 val token = data.getStringExtra(PaymentRequestActivity.RESULT_EXTRA_TOKEN)
                 val amount = data.getLongExtra(PaymentRequestActivity.RESULT_EXTRA_AMOUNT, 0L)

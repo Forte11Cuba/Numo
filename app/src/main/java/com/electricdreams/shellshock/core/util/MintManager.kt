@@ -3,6 +3,7 @@ package com.electricdreams.shellshock.core.util
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import org.json.JSONObject
 import java.net.URI
 import java.util.Locale
 
@@ -20,6 +21,7 @@ class MintManager private constructor(context: Context) {
         private const val PREFS_NAME = "MintPreferences"
         private const val KEY_MINTS = "allowedMints"
         private const val KEY_PREFERRED_LIGHTNING_MINT = "preferredLightningMint"
+        private const val KEY_MINT_INFO_PREFIX = "mintInfo_"
 
         // Default mints
         private val DEFAULT_MINTS: Set<String> = setOf(
@@ -198,6 +200,66 @@ class MintManager private constructor(context: Context) {
             Log.d(TAG, "Mint not allowed: $url")
         }
         return allowed
+    }
+
+    /**
+     * Store mint info JSON for a mint URL.
+     */
+    fun setMintInfo(mintUrl: String, infoJson: String) {
+        val normalized = normalizeMintUrl(mintUrl)
+        preferences.edit().putString(KEY_MINT_INFO_PREFIX + normalized, infoJson).apply()
+        Log.d(TAG, "Stored mint info for $normalized")
+    }
+
+    /**
+     * Get stored mint info JSON for a mint URL.
+     * @return The JSON string or null if not stored.
+     */
+    fun getMintInfo(mintUrl: String): String? {
+        val normalized = normalizeMintUrl(mintUrl)
+        return preferences.getString(KEY_MINT_INFO_PREFIX + normalized, null)
+    }
+
+    /**
+     * Get the display name for a mint.
+     * Returns the mint's name from info if available, otherwise extracts host from URL.
+     */
+    fun getMintDisplayName(mintUrl: String): String {
+        val infoJson = getMintInfo(mintUrl)
+        if (infoJson != null) {
+            try {
+                val json = JSONObject(infoJson)
+                val name = json.optString("name", "")
+                if (name.isNotEmpty()) {
+                    return name
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse mint info JSON for $mintUrl", e)
+            }
+        }
+        // Fallback to extracting host from URL
+        return extractHostFromUrl(mintUrl)
+    }
+
+    /**
+     * Extract a display-friendly host from a mint URL.
+     */
+    private fun extractHostFromUrl(mintUrl: String): String {
+        return try {
+            val uri = URI(mintUrl)
+            var host = uri.host ?: return mintUrl
+            if (host.startsWith("www.")) {
+                host = host.substring(4)
+            }
+            val path = uri.path
+            if (!path.isNullOrEmpty() && path != "/") {
+                host + path
+            } else {
+                host
+            }
+        } catch (e: Exception) {
+            mintUrl
+        }
     }
 
     /** Save current mints to preferences. */

@@ -98,6 +98,38 @@ object CashuWalletManager : MintManager.MintChangeListener {
     }
 
     /**
+     * Fetch mint info from a mint URL using CDK.
+     * Returns the MintInfo object, or null if it cannot be fetched.
+     */
+    suspend fun fetchMintInfo(mintUrl: String): org.cashudevkit.MintInfo? {
+        val w = wallet ?: return null
+        return try {
+            w.fetchMintInfo(MintUrl(mintUrl))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching mint info for $mintUrl: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * Convert MintInfo to JSON string for storage.
+     */
+    fun mintInfoToJson(info: org.cashudevkit.MintInfo): String {
+        val json = org.json.JSONObject()
+        try {
+            info.name?.let { json.put("name", it) }
+            info.description?.let { json.put("description", it) }
+            info.descriptionLong?.let { json.put("descriptionLong", it) }
+            info.pubkey?.let { json.put("pubkey", it) }
+            info.version?.let { json.put("version", it) }
+            info.motd?.let { json.put("motd", it) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error converting mint info to JSON", e)
+        }
+        return json.toString()
+    }
+
+    /**
      * Rebuild wallet + database using the provided mint URLs.
      * Runs on our IO coroutine scope.
      */

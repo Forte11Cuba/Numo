@@ -31,9 +31,9 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Mint URL (host only for cleaner display) -->
+        <!-- Mint name (from mint info, or host if no name) -->
         <TextView
-            android:id="@+id/mint_url_text"
+            android:id="@+id/mint_name_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
@@ -44,10 +44,25 @@
             android:textColor="@color/color_text_primary"
             android:textSize="15sp"
             android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@id/lightning_mint_radio"
             app:layout_constraintEnd_toStartOf="@id/remove_mint_button"
             app:layout_constraintStart_toEndOf="@id/lightning_mint_radio"
-            app:layout_constraintTop_toTopOf="@id/lightning_mint_radio"
-            app:layout_constraintBottom_toBottomOf="@id/lightning_mint_radio" />
+            app:layout_constraintTop_toTopOf="@id/lightning_mint_radio" />
+
+        <!-- Mint URL (fixed-width font, grey) -->
+        <TextView
+            android:id="@+id/mint_url_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:maxLines="1"
+            android:textColor="@color/color_text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/lightning_mint_radio" />
 
         <!-- Balance row -->
         <LinearLayout
@@ -59,7 +74,7 @@
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/lightning_mint_radio">
+            app:layout_constraintTop_toBottomOf="@id/mint_url_text">
 
             <TextView
                 android:layout_width="wrap_content"

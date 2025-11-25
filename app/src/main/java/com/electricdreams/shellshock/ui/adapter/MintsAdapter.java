@@ -1,5 +1,6 @@
 package com.electricdreams.shellshock.ui.adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,8 +14,8 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.electricdreams.shellshock.R;
+import com.electricdreams.shellshock.core.util.MintManager;
 
-import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
     private String preferredLightningMint;
     private Map<String, Long> mintBalances = new HashMap<>();
     private Map<String, Boolean> loadingStates = new HashMap<>();
+    private MintManager mintManager;
     
     /**
      * Interface for handling mint removal
@@ -45,17 +47,18 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         void onLightningMintSelected(String mintUrl);
     }
     
-    public MintsAdapter(List<String> mints, MintRemoveListener listener) {
-        this(mints, listener, null, null);
+    public MintsAdapter(Context context, List<String> mints, MintRemoveListener listener) {
+        this(context, mints, listener, null, null);
     }
     
-    public MintsAdapter(List<String> mints, MintRemoveListener removeListener, 
+    public MintsAdapter(Context context, List<String> mints, MintRemoveListener removeListener, 
                        @Nullable LightningMintSelectedListener lightningListener,
                        @Nullable String preferredLightningMint) {
         this.mints = mints;
         this.removeListener = removeListener;
         this.lightningListener = lightningListener;
         this.preferredLightningMint = preferredLightningMint;
+        this.mintManager = MintManager.getInstance(context);
         // Initialize all mints as loading
         for (String mint : mints) {
             loadingStates.put(mint, true);
@@ -149,31 +152,6 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
     }
     
     /**
-     * Extract display-friendly host from mint URL
-     */
-    private String extractHost(String mintUrl) {
-        try {
-            URI uri = new URI(mintUrl);
-            String host = uri.getHost();
-            if (host != null) {
-                // Remove www. prefix if present
-                if (host.startsWith("www.")) {
-                    host = host.substring(4);
-                }
-                // Add path if it has meaningful content (e.g., /Bitcoin)
-                String path = uri.getPath();
-                if (path != null && !path.isEmpty() && !path.equals("/")) {
-                    return host + path;
-                }
-                return host;
-            }
-        } catch (Exception e) {
-            // Fall through to return original
-        }
-        return mintUrl;
-    }
-    
-    /**
      * Format balance in satoshis for display
      */
     private String formatBalance(long sats) {
@@ -196,6 +174,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
      * ViewHolder for mint items
      */
     class MintViewHolder extends RecyclerView.ViewHolder {
+        private final TextView mintNameText;
         private final TextView mintUrlText;
         private final TextView mintBalanceText;
         private final ProgressBar balanceLoading;
@@ -204,6 +183,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         
         public MintViewHolder(@NonNull View itemView) {
             super(itemView);
+            mintNameText = itemView.findViewById(R.id.mint_name_text);
             mintUrlText = itemView.findViewById(R.id.mint_url_text);
             mintBalanceText = itemView.findViewById(R.id.mint_balance_text);
             balanceLoading = itemView.findViewById(R.id.balance_loading);
@@ -212,8 +192,12 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         }
         
         public void bind(String mintUrl) {
-            // Display host name only for cleaner look
-            mintUrlText.setText(extractHost(mintUrl));
+            // Display mint name (from info if available, otherwise host)
+            String displayName = mintManager.getMintDisplayName(mintUrl);
+            mintNameText.setText(displayName);
+            
+            // Display the full URL in monospace grey below
+            mintUrlText.setText(mintUrl);
             
             // Display balance or loading state
             Boolean isLoading = loadingStates.get(mintUrl);

@@ -51,12 +51,16 @@ class MintsSettingsActivity : AppCompatActivity(),
         mintsRecyclerView.layoutManager = LinearLayoutManager(this)
 
         mintsAdapter = MintsAdapter(
+            this,
             mintManager.getAllowedMints(), 
             this,
             this,
             mintManager.getPreferredLightningMint()
         )
         mintsRecyclerView.adapter = mintsAdapter
+        
+        // Fetch mint info for all mints (in case not already stored)
+        fetchAllMintInfo()
 
         addMintButton.setOnClickListener { addNewMint() }
         resetMintsButton.setOnClickListener { resetMintsToDefaults() }
@@ -90,6 +94,32 @@ class MintsSettingsActivity : AppCompatActivity(),
         }
     }
 
+    private fun fetchAllMintInfo() {
+        lifecycleScope.launch {
+            for (mintUrl in mintManager.getAllowedMints()) {
+                // Skip if we already have info for this mint
+                if (mintManager.getMintInfo(mintUrl) != null) continue
+                
+                fetchAndStoreMintInfo(mintUrl)
+            }
+            // Refresh adapter to show names
+            mintsAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private suspend fun fetchAndStoreMintInfo(mintUrl: String) {
+        withContext(Dispatchers.IO) {
+            val info = CashuWalletManager.fetchMintInfo(mintUrl)
+            if (info != null) {
+                val json = CashuWalletManager.mintInfoToJson(info)
+                mintManager.setMintInfo(mintUrl, json)
+                Log.d(TAG, "Stored mint info for $mintUrl: name=${info.name}")
+            } else {
+                Log.w(TAG, "Could not fetch mint info for $mintUrl")
+            }
+        }
+    }
+
     private fun addNewMint() {
         val mintUrl = newMintEditText.text.toString().trim()
         if (TextUtils.isEmpty(mintUrl)) {
@@ -101,8 +131,12 @@ class MintsSettingsActivity : AppCompatActivity(),
         if (added) {
             mintsAdapter.updateMints(mintManager.getAllowedMints())
             newMintEditText.setText("")
-            // Load balances for the new mint
+            // Load balances and fetch mint info for the new mint
             loadMintBalances()
+            lifecycleScope.launch {
+                fetchAndStoreMintInfo(mintUrl)
+                mintsAdapter.notifyDataSetChanged()
+            }
         } else {
             Toast.makeText(this, "Mint already in the list", Toast.LENGTH_SHORT).show()
         }
