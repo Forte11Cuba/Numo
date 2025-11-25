@@ -239,6 +239,7 @@ object CashuWalletManager : MintManager.MintChangeListener {
             info.pubkey?.let { json.put("pubkey", it) }
             info.version?.let { json.put("version", it) }
             info.motd?.let { json.put("motd", it) }
+            info.iconUrl?.let { json.put("iconUrl", it) }
         } catch (e: Exception) {
             Log.w(TAG, "Error converting mint info to JSON", e)
         }

@@ -1,10 +1,13 @@
 package com.electricdreams.shellshock.ui.adapter;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.TextView;
@@ -14,11 +17,16 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.electricdreams.shellshock.R;
+import com.electricdreams.shellshock.core.util.MintIconCache;
 import com.electricdreams.shellshock.core.util.MintManager;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import kotlinx.coroutines.BuildersKt;
+import kotlin.coroutines.EmptyCoroutineContext;
 
 /**
  * Adapter for the list of allowed mints in settings
@@ -75,6 +83,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         this.withdrawListener = withdrawListener;
         this.preferredLightningMint = preferredLightningMint;
         this.mintManager = MintManager.getInstance(context);
+        
         // Initialize all mints as loading
         for (String mint : mints) {
             loadingStates.put(mint, true);
@@ -190,6 +199,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
      * ViewHolder for mint items
      */
     class MintViewHolder extends RecyclerView.ViewHolder {
+        private final ImageView mintIcon;
         private final TextView mintNameText;
         private final TextView mintUrlText;
         private final TextView mintBalanceText;
@@ -200,6 +210,7 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
         
         public MintViewHolder(@NonNull View itemView) {
             super(itemView);
+            mintIcon = itemView.findViewById(R.id.mint_icon);
             mintNameText = itemView.findViewById(R.id.mint_name_text);
             mintUrlText = itemView.findViewById(R.id.mint_url_text);
             mintBalanceText = itemView.findViewById(R.id.mint_balance_text);
@@ -213,6 +224,9 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
             // Display mint name (from info if available, otherwise host)
             String displayName = mintManager.getMintDisplayName(mintUrl);
             mintNameText.setText(displayName);
+            
+            // Load and display mint icon
+            loadMintIcon(mintUrl);
             
             // Display the full URL in monospace grey below
             mintUrlText.setText(mintUrl);
@@ -276,6 +290,53 @@ public class MintsAdapter extends RecyclerView.Adapter<MintsAdapter.MintViewHold
                 boolean shouldShow = balanceValue > 0 && (isCurrentlyLoading == null || !isCurrentlyLoading);
                 withdrawButton.setVisibility(shouldShow ? View.VISIBLE : View.GONE);
             }
+        }
+        
+        /**
+         * Load and display the mint icon.
+         * Checks cache first, then downloads if needed.
+         */
+        private void loadMintIcon(String mintUrl) {
+            // Reset to default icon first
+            mintIcon.setImageResource(R.drawable.ic_bitcoin);
+            
+            // Get icon URL from mint info
+            String iconUrl = mintManager.getMintIconUrl(mintUrl);
+            if (iconUrl == null || iconUrl.isEmpty()) {
+                // No icon URL available, keep default
+                return;
+            }
+            
+            // Check if icon is already cached
+            File cachedIcon = MintIconCache.INSTANCE.getCachedIconFile(mintUrl);
+            if (cachedIcon != null) {
+                // Load from cache immediately
+                Bitmap bitmap = BitmapFactory.decodeFile(cachedIcon.getAbsolutePath());
+                if (bitmap != null) {
+                    mintIcon.setImageBitmap(bitmap);
+                }
+                return;
+            }
+            
+            // Download icon asynchronously using Thread
+            new Thread(() -> {
+                try {
+                    File iconFile = kotlinx.coroutines.BuildersKt.runBlocking(
+                        EmptyCoroutineContext.INSTANCE,
+                        (scope, continuation) -> MintIconCache.INSTANCE.downloadAndCacheIcon(mintUrl, iconUrl, continuation)
+                    );
+                    
+                    if (iconFile != null) {
+                        Bitmap bitmap = BitmapFactory.decodeFile(iconFile.getAbsolutePath());
+                        if (bitmap != null) {
+                            // Update UI on main thread
+                            itemView.post(() -> mintIcon.setImageBitmap(bitmap));
+                        }
+                    }
+                } catch (Exception e) {
+                    // Silently fail - icon will remain as default
+                }
+            }).start();
         }
     }
 }

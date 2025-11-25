@@ -251,6 +251,26 @@ class MintManager private constructor(context: Context) {
     }
 
     /**
+     * Get the icon URL for a mint.
+     * Returns the iconUrl from mint info if available, otherwise null.
+     */
+    fun getMintIconUrl(mintUrl: String): String? {
+        val infoJson = getMintInfo(mintUrl)
+        if (infoJson != null) {
+            try {
+                val json = JSONObject(infoJson)
+                val iconUrl = json.optString("iconUrl", "")
+                if (iconUrl.isNotEmpty()) {
+                    return iconUrl
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse mint info JSON for icon URL: $mintUrl", e)
+            }
+        }
+        return null
+    }
+
+    /**
      * Extract a display-friendly host from a mint URL.
      */
     private fun extractHostFromUrl(mintUrl: String): String {
