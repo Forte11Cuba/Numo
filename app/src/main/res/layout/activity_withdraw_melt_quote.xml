@@ -236,7 +236,7 @@
     <!-- Confirm Button -->
     <Button
         android:id="@+id/confirm_button"
-        style="@style/Widget.Button.Primary"
+        style="@style/Widget.Button.Primary.Green"
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:layout_marginHorizontal="24dp"
@@ -244,6 +244,7 @@
         android:text="Confirm Withdrawal"
         android:textAllCaps="false"
         android:textSize="18sp"
+        android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <!-- Loading Overlay -->
