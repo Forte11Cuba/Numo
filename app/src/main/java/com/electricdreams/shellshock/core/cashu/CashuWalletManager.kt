@@ -69,6 +69,35 @@ object CashuWalletManager : MintManager.MintChangeListener {
     fun getDatabase(): WalletSqliteDatabase? = database
 
     /**
+     * Get the balance for a specific mint in satoshis.
+     */
+    suspend fun getBalanceForMint(mintUrl: String): Long {
+        val w = wallet ?: return 0L
+        return try {
+            val balanceMap = w.getBalances()
+            balanceMap[mintUrl]?.value?.toLong() ?: 0L
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting balance for mint $mintUrl: ${e.message}", e)
+            0L
+        }
+    }
+
+    /**
+     * Get balances for all configured mints.
+     * Returns a map of mint URL string to balance in satoshis.
+     */
+    suspend fun getAllMintBalances(): Map<String, Long> {
+        val w = wallet ?: return emptyMap()
+        return try {
+            val balanceMap = w.getBalances()
+            balanceMap.mapValues { (_, amount) -> amount.value.toLong() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting mint balances: ${e.message}", e)
+            emptyMap()
+        }
+    }
+
+    /**
      * Rebuild wallet + database using the provided mint URLs.
      * Runs on our IO coroutine scope.
      */

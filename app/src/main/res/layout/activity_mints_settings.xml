@@ -68,8 +68,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="24dp"
-                android:layout_marginBottom="8dp"
-                android:text="Tap ⚡ to select mint for Lightning payments"
+                android:layout_marginBottom="12dp"
+                android:text="Tap a card to select it for ⚡ Lightning payments"
                 android:textAppearance="@style/Text.Caption"
                 android:textColor="@color/color_text_secondary" />
 

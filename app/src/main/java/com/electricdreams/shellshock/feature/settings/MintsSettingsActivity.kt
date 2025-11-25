@@ -2,21 +2,31 @@ package com.electricdreams.shellshock.feature.settings
 
 import android.os.Bundle
 import android.text.TextUtils
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.electricdreams.shellshock.R
+import com.electricdreams.shellshock.core.cashu.CashuWalletManager
 import com.electricdreams.shellshock.core.util.MintManager
 import com.electricdreams.shellshock.ui.adapter.MintsAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MintsSettingsActivity : AppCompatActivity(), 
     MintsAdapter.MintRemoveListener,
     MintsAdapter.LightningMintSelectedListener {
+
+    companion object {
+        private const val TAG = "MintsSettingsActivity"
+    }
 
     private lateinit var mintsRecyclerView: RecyclerView
     private lateinit var mintsAdapter: MintsAdapter
@@ -59,6 +69,25 @@ class MintsSettingsActivity : AppCompatActivity(),
                 false
             }
         }
+
+        // Load balances for all mints
+        loadMintBalances()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh balances when returning to the activity
+        loadMintBalances()
+    }
+
+    private fun loadMintBalances() {
+        lifecycleScope.launch {
+            val balances = withContext(Dispatchers.IO) {
+                CashuWalletManager.getAllMintBalances()
+            }
+            Log.d(TAG, "Loaded ${balances.size} mint balances")
+            mintsAdapter.setAllBalances(balances)
+        }
     }
 
     private fun addNewMint() {
@@ -72,6 +101,8 @@ class MintsSettingsActivity : AppCompatActivity(),
         if (added) {
             mintsAdapter.updateMints(mintManager.getAllowedMints())
             newMintEditText.setText("")
+            // Load balances for the new mint
+            loadMintBalances()
         } else {
             Toast.makeText(this, "Mint already in the list", Toast.LENGTH_SHORT).show()
         }
@@ -82,6 +113,8 @@ class MintsSettingsActivity : AppCompatActivity(),
         mintsAdapter.updateMints(mintManager.getAllowedMints())
         mintsAdapter.setPreferredLightningMint(mintManager.getPreferredLightningMint())
         Toast.makeText(this, "Mints reset to defaults", Toast.LENGTH_SHORT).show()
+        // Reload all balances
+        loadMintBalances()
     }
 
     override fun onMintRemoved(mintUrl: String) {
