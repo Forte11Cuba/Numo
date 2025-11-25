@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -28,6 +30,8 @@ class TransactionDetailActivity : AppCompatActivity() {
 
     private lateinit var entry: PaymentHistoryEntry
     private var position: Int = -1
+    private var paymentType: String? = null
+    private var lightningInvoice: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +50,8 @@ class TransactionDetailActivity : AppCompatActivity() {
         val mintUrl = intent.getStringExtra(EXTRA_TRANSACTION_MINT_URL)
         val paymentRequest = intent.getStringExtra(EXTRA_TRANSACTION_PAYMENT_REQUEST)
         position = intent.getIntExtra(EXTRA_TRANSACTION_POSITION, -1)
+        paymentType = intent.getStringExtra(EXTRA_TRANSACTION_PAYMENT_TYPE)
+        lightningInvoice = intent.getStringExtra(EXTRA_TRANSACTION_LIGHTNING_INVOICE)
 
         // Create entry object (normalize nullable unit fields via Kotlin defaults)
         entry = PaymentHistoryEntry(
@@ -78,6 +84,25 @@ class TransactionDetailActivity : AppCompatActivity() {
     }
 
     private fun displayTransactionDetails() {
+        // Update hero icon based on payment type
+        val heroIcon = findViewById<ImageView>(R.id.hero_icon)
+        val transactionType = findViewById<TextView>(R.id.transaction_type)
+        
+        when (paymentType) {
+            PaymentHistoryEntry.TYPE_LIGHTNING -> {
+                heroIcon.setImageResource(R.drawable.ic_lightning_bolt)
+                transactionType.text = "Lightning Payment"
+            }
+            PaymentHistoryEntry.TYPE_CASHU -> {
+                heroIcon.setImageResource(R.drawable.ic_bitcoin)
+                transactionType.text = "Cashu Payment"
+            }
+            else -> {
+                heroIcon.setImageResource(R.drawable.ic_bitcoin)
+                transactionType.text = "Payment Received"
+            }
+        }
+
         // Amount display
         val amountText: TextView = findViewById(R.id.detail_amount)
         val amountValueText: TextView = findViewById(R.id.detail_amount_value)
@@ -106,6 +131,24 @@ class TransactionDetailActivity : AppCompatActivity() {
         } else {
             mintNameText.visibility = View.GONE
             mintUrlText.text = "Unknown"
+        }
+
+        // Payment Type Row
+        val paymentTypeRow: View = findViewById(R.id.payment_type_row)
+        val paymentTypeDivider: View = findViewById(R.id.payment_type_divider)
+        val paymentTypeText: TextView = findViewById(R.id.detail_payment_type)
+        
+        if (paymentType != null) {
+            paymentTypeRow.visibility = View.VISIBLE
+            paymentTypeDivider.visibility = View.VISIBLE
+            paymentTypeText.text = when (paymentType) {
+                PaymentHistoryEntry.TYPE_LIGHTNING -> "⚡ Lightning"
+                PaymentHistoryEntry.TYPE_CASHU -> "🥜 Cashu"
+                else -> paymentType
+            }
+        } else {
+            paymentTypeRow.visibility = View.GONE
+            paymentTypeDivider.visibility = View.GONE
         }
 
         // Token unit
@@ -148,9 +191,44 @@ class TransactionDetailActivity : AppCompatActivity() {
             bitcoinPriceDivider.visibility = View.GONE
         }
 
-        // Token
+        // Lightning Invoice section
+        val lightningInvoiceHeader: TextView = findViewById(R.id.lightning_invoice_header)
+        val lightningInvoiceContainer: LinearLayout = findViewById(R.id.lightning_invoice_container)
+        val lightningInvoiceText: TextView = findViewById(R.id.detail_lightning_invoice)
+        
+        if (!lightningInvoice.isNullOrEmpty()) {
+            lightningInvoiceHeader.visibility = View.VISIBLE
+            lightningInvoiceContainer.visibility = View.VISIBLE
+            lightningInvoiceText.text = lightningInvoice
+            
+            // Make container clickable to copy invoice
+            lightningInvoiceContainer.setOnClickListener {
+                copyLightningInvoice()
+            }
+        } else {
+            lightningInvoiceHeader.visibility = View.GONE
+            lightningInvoiceContainer.visibility = View.GONE
+        }
+
+        // Token section - hide for Lightning payments with no token
+        val tokenHeader: TextView = findViewById(R.id.token_header)
         val tokenText: TextView = findViewById(R.id.detail_token)
-        tokenText.text = entry.token
+        val copyButton: Button = findViewById(R.id.btn_copy)
+        val openWithButton: Button = findViewById(R.id.btn_open_with)
+        
+        if (entry.token.isEmpty() && paymentType == PaymentHistoryEntry.TYPE_LIGHTNING) {
+            // Lightning payment without token
+            tokenHeader.visibility = View.GONE
+            tokenText.visibility = View.GONE
+            copyButton.visibility = View.GONE
+            openWithButton.visibility = View.GONE
+        } else {
+            tokenHeader.visibility = View.VISIBLE
+            tokenText.visibility = View.VISIBLE
+            tokenText.text = entry.token
+            copyButton.visibility = View.VISIBLE
+            openWithButton.visibility = View.VISIBLE
+        }
 
         // Payment request (if available)
         val paymentRequestHeader: TextView = findViewById(R.id.payment_request_header)
@@ -201,6 +279,14 @@ class TransactionDetailActivity : AppCompatActivity() {
         Toast.makeText(this, "Token copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
+    private fun copyLightningInvoice() {
+        val invoice = lightningInvoice ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Lightning Invoice", invoice)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "Invoice copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
     private fun openWithApp() {
         val cashuUri = "cashu:${entry.token}"
         val uriIntent = Intent(Intent.ACTION_VIEW, Uri.parse(cashuUri)).apply {
@@ -230,9 +316,21 @@ class TransactionDetailActivity : AppCompatActivity() {
             val currency = Amount.Currency.fromCode(entry.getUnit())
             val amount = Amount(entry.amount, currency)
 
-            val shareText = "Cashu Payment\n" +
-                "Amount: ${amount}\n" +
-                "Token: ${entry.token}"
+            val typeLabel = when (paymentType) {
+                PaymentHistoryEntry.TYPE_LIGHTNING -> "Lightning"
+                PaymentHistoryEntry.TYPE_CASHU -> "Cashu"
+                else -> "Cashu"
+            }
+
+            val shareText = buildString {
+                append("$typeLabel Payment\n")
+                append("Amount: $amount\n")
+                if (entry.token.isNotEmpty()) {
+                    append("Token: ${entry.token}")
+                } else if (!lightningInvoice.isNullOrEmpty()) {
+                    append("Invoice: $lightningInvoice")
+                }
+            }
 
             putExtra(Intent.EXTRA_TEXT, shareText)
         }
@@ -268,5 +366,7 @@ class TransactionDetailActivity : AppCompatActivity() {
         const val EXTRA_TRANSACTION_MINT_URL = "transaction_mint_url"
         const val EXTRA_TRANSACTION_PAYMENT_REQUEST = "transaction_payment_request"
         const val EXTRA_TRANSACTION_POSITION = "transaction_position"
+        const val EXTRA_TRANSACTION_PAYMENT_TYPE = "transaction_payment_type"
+        const val EXTRA_TRANSACTION_LIGHTNING_INVOICE = "transaction_lightning_invoice"
     }
 }

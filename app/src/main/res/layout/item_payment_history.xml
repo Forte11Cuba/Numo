@@ -33,7 +33,7 @@
         android:layout_marginEnd="16dp"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/amount_text"
+        app:layout_constraintEnd_toStartOf="@+id/amount_container"
         app:layout_constraintStart_toEndOf="@+id/icon_container"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -55,16 +55,45 @@
             android:text="Aug 24"
             android:maxLines="1"
             android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/subtitle_text"
+            style="@style/Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Lightning"
+            android:visibility="gone"
+            android:maxLines="1"
+            android:ellipsize="end" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/amount_text"
-        style="@style/Text.BodyBold"
+    <LinearLayout
+        android:id="@+id/amount_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="$0"
+        android:orientation="vertical"
+        android:gravity="end"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/amount_text"
+            style="@style/Text.BodyBold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$0" />
+
+        <TextView
+            android:id="@+id/status_text"
+            style="@style/Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Pending"
+            android:textColor="@color/color_warning"
+            android:visibility="gone" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

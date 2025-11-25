@@ -1,5 +1,6 @@
 package com.electricdreams.shellshock.feature.history
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -12,6 +13,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.electricdreams.shellshock.PaymentRequestActivity
 import com.electricdreams.shellshock.R
 import com.electricdreams.shellshock.core.data.model.PaymentHistoryEntry
 import com.electricdreams.shellshock.ui.adapter.PaymentsHistoryAdapter
@@ -39,7 +41,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
 
         adapter = PaymentsHistoryAdapter().apply {
             setOnItemClickListener { entry, position ->
-                showTransactionDetails(entry, position)
+                handleEntryClick(entry, position)
             }
         }
 
@@ -50,15 +52,65 @@ class PaymentsHistoryActivity : AppCompatActivity() {
         loadHistory()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Reload history when returning (e.g., after resuming a pending payment)
+        loadHistory()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == REQUEST_TRANSACTION_DETAIL && resultCode == RESULT_OK && data != null) {
-            val positionToDelete = data.getIntExtra("position_to_delete", -1)
-            if (positionToDelete >= 0) {
-                deletePaymentFromHistory(positionToDelete)
+        when (requestCode) {
+            REQUEST_TRANSACTION_DETAIL -> {
+                if (resultCode == RESULT_OK && data != null) {
+                    val positionToDelete = data.getIntExtra("position_to_delete", -1)
+                    if (positionToDelete >= 0) {
+                        deletePaymentFromHistory(positionToDelete)
+                    }
+                }
+            }
+            REQUEST_RESUME_PAYMENT -> {
+                // Payment resumed - reload history to reflect any changes
+                loadHistory()
             }
         }
+    }
+
+    private fun handleEntryClick(entry: PaymentHistoryEntry, position: Int) {
+        if (entry.isPending()) {
+            // Resume the pending payment
+            resumePendingPayment(entry)
+        } else {
+            // Show transaction details
+            showTransactionDetails(entry, position)
+        }
+    }
+
+    private fun resumePendingPayment(entry: PaymentHistoryEntry) {
+        val intent = Intent(this, PaymentRequestActivity::class.java).apply {
+            putExtra(PaymentRequestActivity.EXTRA_PAYMENT_AMOUNT, entry.amount)
+            putExtra(PaymentRequestActivity.EXTRA_FORMATTED_AMOUNT, entry.formattedAmount)
+            putExtra(PaymentRequestActivity.EXTRA_RESUME_PAYMENT_ID, entry.id)
+            // Pass lightning quote info if available for resume
+            entry.lightningQuoteId?.let {
+                putExtra(PaymentRequestActivity.EXTRA_LIGHTNING_QUOTE_ID, it)
+            }
+            entry.lightningMintUrl?.let {
+                putExtra(PaymentRequestActivity.EXTRA_LIGHTNING_MINT_URL, it)
+            }
+            entry.lightningInvoice?.let {
+                putExtra(PaymentRequestActivity.EXTRA_LIGHTNING_INVOICE, it)
+            }
+            // Pass nostr info for resuming Cashu over Nostr
+            entry.nostrSecretHex?.let {
+                putExtra(PaymentRequestActivity.EXTRA_NOSTR_SECRET_HEX, it)
+            }
+            entry.nostrNprofile?.let {
+                putExtra(PaymentRequestActivity.EXTRA_NOSTR_NPROFILE, it)
+            }
+        }
+        startActivityForResult(intent, REQUEST_RESUME_PAYMENT)
     }
 
     private fun showTransactionDetails(entry: PaymentHistoryEntry, position: Int) {
@@ -75,6 +127,8 @@ class PaymentsHistoryActivity : AppCompatActivity() {
             putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_MINT_URL, entry.mintUrl)
             putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_PAYMENT_REQUEST, entry.paymentRequest)
             putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_POSITION, position)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_PAYMENT_TYPE, entry.paymentType)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_LIGHTNING_INVOICE, entry.lightningInvoice)
         }
 
         startActivityForResult(intent, REQUEST_TRANSACTION_DETAIL)
@@ -155,6 +209,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
         private const val PREFS_NAME = "PaymentHistory"
         private const val KEY_HISTORY = "history"
         private const val REQUEST_TRANSACTION_DETAIL = 1001
+        private const val REQUEST_RESUME_PAYMENT = 1002
 
         @JvmStatic
         fun getPaymentHistory(context: Context): List<PaymentHistoryEntry> {
@@ -165,7 +220,181 @@ class PaymentsHistoryActivity : AppCompatActivity() {
         }
 
         /**
-         * Add a payment to history with comprehensive information.
+         * Add a pending payment to history when payment request is initiated.
+         * Returns the ID of the created entry.
+         */
+        @JvmStatic
+        fun addPendingPayment(
+            context: Context,
+            amount: Long,
+            entryUnit: String,
+            enteredAmount: Long,
+            bitcoinPrice: Double?,
+            paymentRequest: String?,
+            formattedAmount: String?,
+        ): String {
+            val entry = PaymentHistoryEntry.createPending(
+                amount = amount,
+                entryUnit = entryUnit,
+                enteredAmount = enteredAmount,
+                bitcoinPrice = bitcoinPrice,
+                paymentRequest = paymentRequest,
+                formattedAmount = formattedAmount,
+            )
+
+            val history = getPaymentHistory(context).toMutableList()
+            history.add(entry)
+
+            val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            prefs.edit().putString(KEY_HISTORY, Gson().toJson(history)).apply()
+
+            return entry.id
+        }
+
+        /**
+         * Update a pending payment to completed with full payment details.
+         */
+        @JvmStatic
+        fun completePendingPayment(
+            context: Context,
+            paymentId: String,
+            token: String,
+            paymentType: String,
+            mintUrl: String?,
+            lightningInvoice: String? = null,
+            lightningQuoteId: String? = null,
+            lightningMintUrl: String? = null,
+        ) {
+            val history = getPaymentHistory(context).toMutableList()
+            val index = history.indexOfFirst { it.id == paymentId }
+
+            if (index >= 0) {
+                val existing = history[index]
+                val updated = PaymentHistoryEntry(
+                    id = existing.id,
+                    token = token,
+                    amount = existing.amount,
+                    date = existing.date,
+                    rawUnit = existing.getUnit(),
+                    rawEntryUnit = existing.getEntryUnit(),
+                    enteredAmount = existing.enteredAmount,
+                    bitcoinPrice = existing.bitcoinPrice,
+                    mintUrl = mintUrl ?: existing.mintUrl,
+                    paymentRequest = existing.paymentRequest,
+                    rawStatus = PaymentHistoryEntry.STATUS_COMPLETED,
+                    paymentType = paymentType,
+                    lightningInvoice = lightningInvoice,
+                    lightningQuoteId = lightningQuoteId,
+                    lightningMintUrl = lightningMintUrl,
+                    formattedAmount = existing.formattedAmount,
+                )
+                history[index] = updated
+
+                val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                prefs.edit().putString(KEY_HISTORY, Gson().toJson(history)).apply()
+            }
+        }
+
+        /**
+         * Update a pending payment with Lightning quote info (for resume capability).
+         */
+        @JvmStatic
+        fun updatePendingWithLightningInfo(
+            context: Context,
+            paymentId: String,
+            lightningInvoice: String,
+            lightningQuoteId: String,
+            lightningMintUrl: String,
+        ) {
+            val history = getPaymentHistory(context).toMutableList()
+            val index = history.indexOfFirst { it.id == paymentId }
+
+            if (index >= 0) {
+                val existing = history[index]
+                val updated = PaymentHistoryEntry(
+                    id = existing.id,
+                    token = existing.token,
+                    amount = existing.amount,
+                    date = existing.date,
+                    rawUnit = existing.getUnit(),
+                    rawEntryUnit = existing.getEntryUnit(),
+                    enteredAmount = existing.enteredAmount,
+                    bitcoinPrice = existing.bitcoinPrice,
+                    mintUrl = existing.mintUrl,
+                    paymentRequest = existing.paymentRequest,
+                    rawStatus = existing.getStatus(),
+                    paymentType = existing.paymentType,
+                    lightningInvoice = lightningInvoice,
+                    lightningQuoteId = lightningQuoteId,
+                    lightningMintUrl = lightningMintUrl,
+                    formattedAmount = existing.formattedAmount,
+                    nostrNprofile = existing.nostrNprofile,
+                    nostrSecretHex = existing.nostrSecretHex,
+                )
+                history[index] = updated
+
+                val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                prefs.edit().putString(KEY_HISTORY, Gson().toJson(history)).apply()
+            }
+        }
+
+        /**
+         * Update a pending payment with Nostr info (for resume capability).
+         */
+        @JvmStatic
+        fun updatePendingWithNostrInfo(
+            context: Context,
+            paymentId: String,
+            nostrSecretHex: String,
+            nostrNprofile: String,
+        ) {
+            val history = getPaymentHistory(context).toMutableList()
+            val index = history.indexOfFirst { it.id == paymentId }
+
+            if (index >= 0) {
+                val existing = history[index]
+                val updated = PaymentHistoryEntry(
+                    id = existing.id,
+                    token = existing.token,
+                    amount = existing.amount,
+                    date = existing.date,
+                    rawUnit = existing.getUnit(),
+                    rawEntryUnit = existing.getEntryUnit(),
+                    enteredAmount = existing.enteredAmount,
+                    bitcoinPrice = existing.bitcoinPrice,
+                    mintUrl = existing.mintUrl,
+                    paymentRequest = existing.paymentRequest,
+                    rawStatus = existing.getStatus(),
+                    paymentType = existing.paymentType,
+                    lightningInvoice = existing.lightningInvoice,
+                    lightningQuoteId = existing.lightningQuoteId,
+                    lightningMintUrl = existing.lightningMintUrl,
+                    formattedAmount = existing.formattedAmount,
+                    nostrNprofile = nostrNprofile,
+                    nostrSecretHex = nostrSecretHex,
+                )
+                history[index] = updated
+
+                val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                prefs.edit().putString(KEY_HISTORY, Gson().toJson(history)).apply()
+            }
+        }
+
+        /**
+         * Cancel a pending payment (mark as cancelled or delete).
+         */
+        @JvmStatic
+        fun cancelPendingPayment(context: Context, paymentId: String) {
+            val history = getPaymentHistory(context).toMutableList()
+            // Remove cancelled pending payments (they're not useful)
+            history.removeAll { it.id == paymentId && it.isPending() }
+
+            val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            prefs.edit().putString(KEY_HISTORY, Gson().toJson(history)).apply()
+        }
+
+        /**
+         * Add a payment to history with comprehensive information (legacy method).
          */
         @JvmStatic
         fun addToHistory(
@@ -191,6 +420,8 @@ class PaymentsHistoryActivity : AppCompatActivity() {
                     bitcoinPrice = bitcoinPrice,
                     mintUrl = mintUrl,
                     paymentRequest = paymentRequest,
+                    rawStatus = PaymentHistoryEntry.STATUS_COMPLETED,
+                    paymentType = PaymentHistoryEntry.TYPE_CASHU,
                 ),
             )
 
@@ -200,7 +431,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
 
         /**
          * Legacy method for backward compatibility.
-         * @deprecated Use the full-parameter addToHistory instead.
+         * @deprecated Use addToHistory with full parameters.
          */
         @Deprecated("Use addToHistory with full parameters")
         @JvmStatic

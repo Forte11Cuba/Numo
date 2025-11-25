@@ -2,7 +2,6 @@ package com.electricdreams.shellshock
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -13,42 +12,21 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.electricdreams.shellshock.core.cashu.CashuWalletManager
+import com.electricdreams.shellshock.core.data.model.PaymentHistoryEntry
 import com.electricdreams.shellshock.core.model.Amount
 import com.electricdreams.shellshock.core.model.Amount.Currency
 import com.electricdreams.shellshock.core.util.MintManager
 import com.electricdreams.shellshock.core.worker.BitcoinPriceWorker
 import com.electricdreams.shellshock.core.util.CurrencyManager
+import com.electricdreams.shellshock.feature.history.PaymentsHistoryActivity
 import com.electricdreams.shellshock.ndef.CashuPaymentHelper
 import com.electricdreams.shellshock.ndef.NdefHostCardEmulationService
-import com.electricdreams.shellshock.nostr.NostrKeyPair
-import com.electricdreams.shellshock.nostr.NostrPaymentListener
-import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.common.BitMatrix
-import com.google.zxing.qrcode.QRCodeWriter
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import kotlinx.coroutines.CancellationException
+import com.electricdreams.shellshock.payment.LightningMintHandler
+import com.electricdreams.shellshock.payment.NostrPaymentHandler
+import com.electricdreams.shellshock.payment.PaymentTabManager
+import com.electricdreams.shellshock.ui.util.QrCodeGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import org.cashudevkit.Amount as CdkAmount
-import org.cashudevkit.CurrencyUnit
-import org.cashudevkit.MintQuote
-import org.cashudevkit.MintUrl
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 class PaymentRequestActivity : AppCompatActivity() {
 
@@ -63,26 +41,42 @@ class PaymentRequestActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var closeButton: View
     private lateinit var shareButton: View
-    private lateinit var nfcReadingOverlay: android.view.View
+    private lateinit var nfcReadingOverlay: View
+    private lateinit var lightningLoadingSpinner: View
+    private lateinit var lightningLogoCard: View
 
     private var paymentAmount: Long = 0
     private var bitcoinPriceWorker: BitcoinPriceWorker? = null
     private var hcePaymentRequest: String? = null
-    private var qrPaymentRequest: String? = null
-    private var nostrListener: NostrPaymentListener? = null
+    private var formattedAmountString: String = ""
 
-    // Lightning minting state
-    private var lightningMintQuote: MintQuote? = null
-    private var lightningMintJob: Job? = null
+    // Tab manager for Cashu/Lightning tab switching
+    private lateinit var tabManager: PaymentTabManager
+
+    // Payment handlers
+    private var nostrHandler: NostrPaymentHandler? = null
+    private var lightningHandler: LightningMintHandler? = null
+    private var lightningStarted = false
+
+    // Lightning quote info for history
+    private var lightningInvoice: String? = null
+    private var lightningQuoteId: String? = null
+    private var lightningMintUrl: String? = null
+
+    // Pending payment tracking
+    private var pendingPaymentId: String? = null
+    private var isResumingPayment = false
+    
+    // Resume data for Lightning
+    private var resumeLightningQuoteId: String? = null
+    private var resumeLightningMintUrl: String? = null
+    private var resumeLightningInvoice: String? = null
+
+    // Resume data for Nostr
+    private var resumeNostrSecretHex: String? = null
+    private var resumeNostrNprofile: String? = null
 
     private val uiScope = CoroutineScope(Dispatchers.Main)
-
-    // Shared OkHttp client for mint WebSocket connections
-    private val lightningWsClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .readTimeout(0, TimeUnit.MILLISECONDS) // no timeout, rely on WS pings
-            .build()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,10 +94,35 @@ class PaymentRequestActivity : AppCompatActivity() {
         statusText = findViewById(R.id.payment_status_text)
         closeButton = findViewById(R.id.close_button)
         shareButton = findViewById(R.id.share_button)
-
-        // Set up tab listeners
-        setupTabs()
+        lightningLoadingSpinner = findViewById(R.id.lightning_loading_spinner)
+        lightningLogoCard = findViewById(R.id.lightning_logo_card)
         nfcReadingOverlay = findViewById(R.id.nfc_reading_overlay)
+
+        // Initialize tab manager
+        tabManager = PaymentTabManager(
+            cashuTab = cashuTab,
+            lightningTab = lightningTab,
+            cashuQrContainer = cashuQrContainer,
+            lightningQrContainer = lightningQrContainer,
+            cashuQrImageView = cashuQrImageView,
+            lightningQrImageView = lightningQrImageView,
+            resources = resources,
+            theme = theme
+        )
+
+        // Set up tabs with listener
+        tabManager.setup(object : PaymentTabManager.TabSelectionListener {
+            override fun onLightningTabSelected() {
+                // Start lightning quote flow once when tab first selected
+                if (!lightningStarted) {
+                    startLightningMintFlow()
+                }
+            }
+
+            override fun onCashuTabSelected() {
+                // Status text mainly controlled by Nostr / HCE flow
+            }
+        })
 
         // Initialize Bitcoin price worker
         bitcoinPriceWorker = BitcoinPriceWorker.getInstance(this)
@@ -119,8 +138,21 @@ class PaymentRequestActivity : AppCompatActivity() {
         }
 
         // Get formatted amount string if provided, otherwise format as BTC
-        val formattedAmountString = intent.getStringExtra(EXTRA_FORMATTED_AMOUNT)
+        formattedAmountString = intent.getStringExtra(EXTRA_FORMATTED_AMOUNT)
             ?: Amount(paymentAmount, Currency.BTC).toString()
+
+        // Check if we're resuming a pending payment
+        pendingPaymentId = intent.getStringExtra(EXTRA_RESUME_PAYMENT_ID)
+        isResumingPayment = pendingPaymentId != null
+
+        // Get resume data for Lightning if available
+        resumeLightningQuoteId = intent.getStringExtra(EXTRA_LIGHTNING_QUOTE_ID)
+        resumeLightningMintUrl = intent.getStringExtra(EXTRA_LIGHTNING_MINT_URL)
+        resumeLightningInvoice = intent.getStringExtra(EXTRA_LIGHTNING_INVOICE)
+
+        // Get resume data for Nostr if available
+        resumeNostrSecretHex = intent.getStringExtra(EXTRA_NOSTR_SECRET_HEX)
+        resumeNostrNprofile = intent.getStringExtra(EXTRA_NOSTR_NPROFILE)
 
         // Display amount (without "Pay" prefix since it's in the label above)
         largeAmountDisplay.text = formattedAmountString
@@ -136,7 +168,7 @@ class PaymentRequestActivity : AppCompatActivity() {
 
         shareButton.setOnClickListener {
             // By default, share the Cashu (Nostr) payment request; fall back to Lightning invoice
-            val toShare = qrPaymentRequest ?: lightningMintQuote?.request
+            val toShare = nostrHandler?.paymentRequest ?: lightningHandler?.currentInvoice ?: lightningInvoice
             if (toShare != null) {
                 sharePaymentRequest(toShare)
             } else {
@@ -144,51 +176,44 @@ class PaymentRequestActivity : AppCompatActivity() {
             }
         }
 
+        // Create pending payment entry if this is a new payment (not resuming)
+        if (!isResumingPayment) {
+            createPendingPayment()
+        }
+
         // Initialize all payment modes (NDEF, Nostr, Lightning)
         initializePaymentRequest()
-    }
 
-    private fun setupTabs() {
-        // Default: show Cashu (Nostr) QR; Lightning QR becomes visible only when tab is selected
-        selectCashuTab()
-
-        lightningTab.setOnClickListener { selectLightningTab() }
-        cashuTab.setOnClickListener { selectCashuTab() }
-    }
-
-    private fun selectLightningTab() {
-        // Visual state
-        lightningTab.setTextColor(resources.getColor(R.color.color_bg_white, theme))
-        lightningTab.setBackgroundResource(R.drawable.bg_button_primary_green)
-        cashuTab.setTextColor(resources.getColor(R.color.color_text_secondary, theme))
-        cashuTab.setBackgroundResource(android.R.color.transparent)
-
-        // QR visibility
-        lightningQrContainer.visibility = View.VISIBLE
-        lightningQrImageView.visibility = View.VISIBLE
-        cashuQrContainer.visibility = View.INVISIBLE
-        cashuQrImageView.visibility = View.INVISIBLE
-
-        // Start lightning quote flow once when tab first selected and quote not created yet
-        if (lightningMintQuote == null) {
-            startLightningMintFlow()
+        // If resuming and we have Lightning data, auto-switch to Lightning tab
+        if (isResumingPayment && resumeLightningQuoteId != null) {
+            tabManager.selectLightningTab()
         }
     }
 
-    private fun selectCashuTab() {
-        // Visual state
-        cashuTab.setTextColor(resources.getColor(R.color.color_bg_white, theme))
-        cashuTab.setBackgroundResource(R.drawable.bg_button_primary_green)
-        lightningTab.setTextColor(resources.getColor(R.color.color_text_secondary, theme))
-        lightningTab.setBackgroundResource(android.R.color.transparent)
+    private fun createPendingPayment() {
+        val entryUnit = if (formattedAmountString.startsWith("₿")) "sat" else 
+            CurrencyManager.getInstance(this).getCurrentCurrency()
+        
+        val enteredAmount = if (entryUnit == "sat") {
+            paymentAmount
+        } else {
+            val fiatValue = bitcoinPriceWorker?.satoshisToFiat(paymentAmount) ?: 0.0
+            (fiatValue * 100).toLong() // Convert to cents
+        }
 
-        // QR visibility
-        cashuQrContainer.visibility = View.VISIBLE
-        cashuQrImageView.visibility = View.VISIBLE
-        lightningQrContainer.visibility = View.INVISIBLE
-        lightningQrImageView.visibility = View.INVISIBLE
+        val bitcoinPrice = bitcoinPriceWorker?.getCurrentPrice()?.takeIf { it > 0 }
 
-        // Status text mainly controlled by Nostr / HCE flow
+        pendingPaymentId = PaymentsHistoryActivity.addPendingPayment(
+            context = this,
+            amount = paymentAmount,
+            entryUnit = entryUnit,
+            enteredAmount = enteredAmount,
+            bitcoinPrice = bitcoinPrice,
+            paymentRequest = null, // Will be set after payment request is created
+            formattedAmount = formattedAmountString,
+        )
+
+        Log.d(TAG, "Created pending payment with id=$pendingPaymentId")
     }
 
     private fun updateConvertedAmount(formattedAmountString: String) {
@@ -249,6 +274,9 @@ class PaymentRequestActivity : AppCompatActivity() {
         val allowedMints = mintManager.getAllowedMints()
         Log.d(TAG, "Using ${allowedMints.size} allowed mints for payment request")
 
+        // Initialize Lightning handler (will be started when tab is selected)
+        lightningHandler = LightningMintHandler(allowedMints, uiScope)
+
         // Check if NDEF is available
         val ndefAvailable = NdefHostCardEmulationService.isHceAvailable(this)
 
@@ -273,125 +301,114 @@ class PaymentRequestActivity : AppCompatActivity() {
             }
         }
 
-        // Generate ephemeral nostr identity for QR payment
-        val eph = NostrKeyPair.generate()
-        val nostrPubHex = eph.hexPub
-        val nostrSecret = eph.secretKeyBytes
+        // Initialize Nostr handler and start payment flow
+        nostrHandler = NostrPaymentHandler(this, allowedMints)
+        startNostrPaymentFlow()
 
-        val relayList = NOSTR_RELAYS.toList()
-        val nprofile = com.electricdreams.shellshock.nostr.Nip19.encodeNprofile(
-            eph.publicKeyBytes,
-            relayList
-        )
+        // Lightning flow is started only when user switches to Lightning tab
+        // (see TabSelectionListener.onLightningTabSelected())
+    }
 
-        Log.d(TAG, "Ephemeral nostr pubkey=$nostrPubHex nprofile=$nprofile")
+    private fun startNostrPaymentFlow() {
+        val handler = nostrHandler ?: return
 
-        // QR-specific PaymentRequest WITH Nostr transport (Cashu over Nostr)
-        qrPaymentRequest = CashuPaymentHelper.createPaymentRequestWithNostr(
-            paymentAmount,
-            "Payment of $paymentAmount sats",
-            allowedMints,
-            nprofile
-        )
-
-        if (qrPaymentRequest == null) {
-            Log.e(TAG, "Failed to create QR payment request with Nostr transport")
-            statusText.text = "Error creating payment request"
-        } else {
-            Log.d(TAG, "Created QR payment request with Nostr: $qrPaymentRequest")
-
-            // Generate and display Cashu QR code
-            try {
-                val qrBitmap = generateQrBitmap(qrPaymentRequest!!, 512)
-                cashuQrImageView.setImageBitmap(qrBitmap)
-                statusText.text = "Waiting for payment..."
-            } catch (e: Exception) {
-                Log.e(TAG, "Error generating Cashu QR bitmap: ${e.message}", e)
-                statusText.text = "Error generating QR code"
+        val callback = object : NostrPaymentHandler.Callback {
+            override fun onPaymentRequestReady(paymentRequest: String) {
+                try {
+                    val qrBitmap = QrCodeGenerator.generate(paymentRequest, 512)
+                    cashuQrImageView.setImageBitmap(qrBitmap)
+                    statusText.text = "Waiting for payment..."
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error generating Cashu QR bitmap: ${e.message}", e)
+                    statusText.text = "Error generating QR code"
+                }
             }
 
-            // Start Nostr listener for this ephemeral identity
-            setupNostrPayment(nostrSecret, nostrPubHex, relayList)
+            override fun onTokenReceived(token: String) {
+                runOnUiThread {
+                    handlePaymentSuccess(token)
+                }
+            }
+
+            override fun onError(message: String) {
+                Log.e(TAG, "Nostr payment error: $message")
+                statusText.text = "Error: $message"
+            }
         }
 
-        // Start Lightning flow in parallel with Nostr/HCE
-        // The invoice QR itself is only shown when Lightning tab is selected.
-        startLightningMintFlow()
+        if (isResumingPayment && resumeNostrSecretHex != null && resumeNostrNprofile != null) {
+            // Resume with stored keys
+            handler.resume(paymentAmount, resumeNostrSecretHex!!, resumeNostrNprofile!!, callback)
+        } else {
+            // Start fresh
+            handler.start(paymentAmount, pendingPaymentId, callback)
+        }
     }
 
     private fun startLightningMintFlow() {
-        val wallet = CashuWalletManager.getWallet()
-        if (wallet == null) {
-            Log.w(TAG, "MultiMintWallet not ready, skipping Lightning for now")
-            return
+        lightningStarted = true
+
+        // Check if we're resuming with existing Lightning quote
+        if (resumeLightningQuoteId != null && resumeLightningMintUrl != null && resumeLightningInvoice != null) {
+            Log.d(TAG, "Resuming Lightning quote: id=$resumeLightningQuoteId")
+            
+            lightningHandler?.resume(
+                quoteId = resumeLightningQuoteId!!,
+                mintUrlStr = resumeLightningMintUrl!!,
+                invoice = resumeLightningInvoice!!,
+                callback = createLightningCallback()
+            )
+        } else {
+            // Start fresh Lightning flow
+            lightningHandler?.start(paymentAmount, createLightningCallback())
         }
+    }
 
-        val allowedMints = MintManager.getInstance(this).getAllowedMints()
-        if (allowedMints.isEmpty()) {
-            Log.w(TAG, "No allowed mints configured, cannot request Lightning mint quote")
-            return
-        }
+    private fun createLightningCallback(): LightningMintHandler.Callback {
+        return object : LightningMintHandler.Callback {
+            override fun onInvoiceReady(bolt11: String, quoteId: String, mintUrl: String) {
+                // Store for history
+                lightningInvoice = bolt11
+                lightningQuoteId = quoteId
+                lightningMintUrl = mintUrl
 
-        // For now pick the first allowed mint; could be randomized/rotated later
-        val mintUrl = try {
-            MintUrl(allowedMints.first())
-        } catch (t: Throwable) {
-            Log.e(TAG, "Invalid mint URL for Lightning mint: ${allowedMints.first()}", t)
-            return
-        }
-
-        lightningMintJob?.cancel()
-        lightningMintJob = uiScope.launch(Dispatchers.IO) {
-            try {
-                // CDK Amount is in minor units of wallet's CurrencyUnit (we constructed wallet in sats)
-                val quoteAmount = CdkAmount(paymentAmount.toULong())
-
-                Log.d(TAG, "Requesting Lightning mint quote from ${mintUrl.toString()} for $paymentAmount sats")
-                val quote = wallet.mintQuote(mintUrl, quoteAmount, "Shellshock POS payment of $paymentAmount sats")
-                lightningMintQuote = quote
-
-                val bolt11 = quote.request
-                Log.d(TAG, "Received Lightning mint quote id=${quote.id} bolt11=$bolt11")
-
-                // Update UI with invoice QR on main thread
-                launch(Dispatchers.Main) {
-                    try {
-                        val qrBitmap = generateQrBitmap(bolt11, 512)
-                        lightningQrImageView.setImageBitmap(qrBitmap)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error generating Lightning QR bitmap: ${e.message}", e)
-                    }
+                // Update pending payment with Lightning info
+                pendingPaymentId?.let { paymentId ->
+                    PaymentsHistoryActivity.updatePendingWithLightningInfo(
+                        context = this@PaymentRequestActivity,
+                        paymentId = paymentId,
+                        lightningInvoice = bolt11,
+                        lightningQuoteId = quoteId,
+                        lightningMintUrl = mintUrl,
+                    )
                 }
 
-                // Subscribe to mint quote state updates via WebSocket (NUT-17)
                 try {
-                    Log.d(TAG, "Subscribing to Lightning mint quote state via WebSocket for id=${quote.id}")
-                    awaitLightningMintQuotePaid(mintUrl, quote.id)
-                } catch (ce: CancellationException) {
-                    // Job was cancelled (e.g. user cancelled, or another payment path succeeded)
-                    Log.d(TAG, "Lightning mint flow cancelled while waiting on WebSocket: ${ce.message}")
-                    return@launch
+                    val qrBitmap = QrCodeGenerator.generate(bolt11, 512)
+                    lightningQrImageView.setImageBitmap(qrBitmap)
+                    // Hide loading spinner and show the bolt icon
+                    lightningLoadingSpinner.visibility = View.GONE
+                    lightningLogoCard.visibility = View.VISIBLE
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error generating Lightning QR bitmap: ${e.message}", e)
+                    // Still hide spinner on error
+                    lightningLoadingSpinner.visibility = View.GONE
                 }
+            }
 
-                Log.d(TAG, "Mint quote ${quote.id} is paid according to WS, calling wallet.mint")
-                val proofs = wallet.mint(mintUrl, quote.id, null)
-                Log.d(TAG, "Lightning mint completed with ${proofs.size} proofs (Lightning payment path)")
+            override fun onPaymentSuccess() {
+                handleLightningPaymentSuccess()
+            }
 
-                launch(Dispatchers.Main) {
-                    handleLightningPaymentSuccess()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in Lightning mint flow: ${e.message}", e)
+            override fun onError(message: String) {
                 // Do not immediately fail the whole payment; NFC or Nostr may still succeed.
                 // Only surface a toast if Lightning tab is currently active.
-                launch(Dispatchers.Main) {
-                    if (lightningQrImageView.visibility == View.VISIBLE) {
-                        Toast.makeText(
-                            this@PaymentRequestActivity,
-                            "Lightning payment failed: ${e.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                if (tabManager.isLightningTabSelected()) {
+                    Toast.makeText(
+                        this@PaymentRequestActivity,
+                        "Lightning payment failed: $message",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
@@ -432,14 +449,14 @@ class PaymentRequestActivity : AppCompatActivity() {
                     override fun onNfcReadingStarted() {
                         runOnUiThread {
                             Log.d(TAG, "NFC reading started - showing overlay")
-                            nfcReadingOverlay.visibility = android.view.View.VISIBLE
+                            nfcReadingOverlay.visibility = View.VISIBLE
                         }
                     }
 
                     override fun onNfcReadingStopped() {
                         runOnUiThread {
                             Log.d(TAG, "NFC reading stopped - hiding overlay")
-                            nfcReadingOverlay.visibility = android.view.View.GONE
+                            nfcReadingOverlay.visibility = View.GONE
                         }
                     }
                 })
@@ -449,72 +466,29 @@ class PaymentRequestActivity : AppCompatActivity() {
         }, 1000)
     }
 
-    private fun setupNostrPayment(
-        nostrSecret: ByteArray,
-        nostrPubHex: String,
-        relayList: List<String>
-    ) {
-        nostrListener?.stop()
-        nostrListener = null
-
-        nostrListener = NostrPaymentListener(
-            nostrSecret,
-            nostrPubHex,
-            paymentAmount,
-            MintManager.getInstance(this).getAllowedMints(),
-            relayList,
-            { token -> runOnUiThread { handlePaymentSuccess(token) } },
-            { msg, t -> Log.e(TAG, "NostrPaymentListener error: $msg", t) }
-        ).also { it.start() }
-
-        Log.d(TAG, "Nostr payment listener started")
-    }
-
-    @Throws(Exception::class)
-    private fun generateQrBitmap(text: String, size: Int): Bitmap {
-        val hints: MutableMap<EncodeHintType, Any> = mutableMapOf()
-        hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.L
-        hints[EncodeHintType.MARGIN] = 1 // Small margin so dots aren't cut off
-
-        val qrWriter = QRCodeWriter()
-        val rawMatrix: BitMatrix = qrWriter.encode(text, BarcodeFormat.QR_CODE, 0, 0, hints)
-
-        val matrixWidth = rawMatrix.width
-        val matrixHeight = rawMatrix.height
-
-        val scale = size / matrixWidth
-        val outputWidth = matrixWidth * scale
-        val outputHeight = matrixHeight * scale
-
-        val outputBitmap = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(outputBitmap)
-        canvas.drawColor(0xFFFFFFFF.toInt())
-
-        val paint = android.graphics.Paint().apply {
-            color = 0xFF000000.toInt()
-            isAntiAlias = true
-        }
-
-        val radius = scale.toFloat() / 2f
-
-        for (x in 0 until matrixWidth) {
-            for (y in 0 until matrixHeight) {
-                if (rawMatrix[x, y]) {
-                    val cx = x * scale + radius
-                    val cy = y * scale + radius
-                    canvas.drawCircle(cx, cy, radius, paint)
-                }
-            }
-        }
-
-        return outputBitmap
-    }
-
     private fun handlePaymentSuccess(token: String) {
         Log.d(TAG, "Payment successful! Token: $token")
 
         statusText.visibility = View.VISIBLE
         statusText.text = "Payment successful!"
+
+        // Extract mint URL from token
+        val mintUrl = try {
+            com.cashujdk.nut00.Token.decode(token).mint
+        } catch (e: Exception) {
+            null
+        }
+
+        // Update pending payment to completed
+        pendingPaymentId?.let { paymentId ->
+            PaymentsHistoryActivity.completePendingPayment(
+                context = this,
+                paymentId = paymentId,
+                token = token,
+                paymentType = PaymentHistoryEntry.TYPE_CASHU,
+                mintUrl = mintUrl,
+            )
+        }
 
         val resultIntent = Intent().apply {
             putExtra(RESULT_EXTRA_TOKEN, token)
@@ -522,7 +496,8 @@ class PaymentRequestActivity : AppCompatActivity() {
         }
         setResult(Activity.RESULT_OK, resultIntent)
 
-        cleanupAndFinish()
+        // Show PaymentReceivedActivity
+        showPaymentReceivedActivity(token)
     }
 
     /**
@@ -537,12 +512,36 @@ class PaymentRequestActivity : AppCompatActivity() {
         statusText.visibility = View.VISIBLE
         statusText.text = "Payment successful!"
 
+        // Update pending payment to completed with Lightning info
+        pendingPaymentId?.let { paymentId ->
+            PaymentsHistoryActivity.completePendingPayment(
+                context = this,
+                paymentId = paymentId,
+                token = "",
+                paymentType = PaymentHistoryEntry.TYPE_LIGHTNING,
+                mintUrl = lightningMintUrl,
+                lightningInvoice = lightningInvoice,
+                lightningQuoteId = lightningQuoteId,
+                lightningMintUrl = lightningMintUrl,
+            )
+        }
+
         val resultIntent = Intent().apply {
             putExtra(RESULT_EXTRA_TOKEN, "")
             putExtra(RESULT_EXTRA_AMOUNT, paymentAmount)
         }
         setResult(Activity.RESULT_OK, resultIntent)
 
+        // Show PaymentReceivedActivity (without token for Lightning)
+        showPaymentReceivedActivity("")
+    }
+
+    private fun showPaymentReceivedActivity(token: String) {
+        val successIntent = Intent(this, PaymentReceivedActivity::class.java).apply {
+            putExtra(PaymentReceivedActivity.EXTRA_TOKEN, token)
+            putExtra(PaymentReceivedActivity.EXTRA_AMOUNT, paymentAmount)
+        }
+        startActivity(successIntent)
         cleanupAndFinish()
     }
 
@@ -563,21 +562,21 @@ class PaymentRequestActivity : AppCompatActivity() {
     private fun cancelPayment() {
         Log.d(TAG, "Payment cancelled")
 
+        // Note: We don't cancel the pending payment here - user might want to resume it later
+        // Only cancel if explicitly requested or if it's an error
+
         setResult(Activity.RESULT_CANCELED)
         cleanupAndFinish()
     }
 
     private fun cleanupAndFinish() {
-        // Stop Nostr listener
-        nostrListener?.let { listener ->
-            Log.d(TAG, "Stopping NostrPaymentListener")
-            listener.stop()
-            nostrListener = null
-        }
+        // Stop Nostr handler
+        nostrHandler?.stop()
+        nostrHandler = null
 
-        // Stop Lightning mint job
-        lightningMintJob?.cancel()
-        lightningMintJob = null
+        // Stop Lightning handler
+        lightningHandler?.cancel()
+        lightningHandler = null
 
         // Clean up HCE service
         try {
@@ -607,171 +606,6 @@ class PaymentRequestActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(shareIntent, "Share Payment Request"))
     }
 
-    /**
-     * Build the mint's WebSocket URL as `<scheme>/v1/ws` based on the MintUrl.
-     *
-     * If the mint URL is `https://mint.com` this returns `wss://mint.com/v1/ws`.
-     * If it includes a path (e.g. `https://mint.com/Bitcoin`) we append `/v1/ws`
-     * after that path: `wss://mint.com/Bitcoin/v1/ws`.
-     */
-    private fun buildMintWsUrl(mintUrl: MintUrl): String {
-        val base = mintUrl.url.removeSuffix("/")
-        val wsBase = when {
-            base.startsWith("https://", ignoreCase = true) ->
-                "wss://" + base.removePrefix("https://")
-            base.startsWith("http://", ignoreCase = true) ->
-                "ws://" + base.removePrefix("http://")
-            base.startsWith("wss://", ignoreCase = true) ||
-                base.startsWith("ws://", ignoreCase = true) -> base
-            else -> "wss://$base"
-        }
-        return "$wsBase/v1/ws"
-    }
-
-    /**
-     * Suspend until the given Lightning mint quote is reported as paid via the
-     * mint's WebSocket (NUT-17) subscription.
-     *
-     * We subscribe with kind = "bolt11_mint_quote" and a single filter: the quote id.
-     * On `state == "PAID"` (or `"ISSUED"` if we attached late), we resume.
-     *
-     * Cancellation of the coroutine will unsubscribe and close the WebSocket,
-     * which is how we shut this down when another payment path wins or the user
-     * cancels the checkout.
-     */
-    private suspend fun awaitLightningMintQuotePaid(
-        mintUrl: MintUrl,
-        quoteId: String
-    ) = suspendCancellableCoroutine<Unit> { cont ->
-        val wsUrl = buildMintWsUrl(mintUrl)
-        Log.d(TAG, "Connecting to mint WebSocket at $wsUrl for quoteId=$quoteId")
-
-        val request = Request.Builder().url(wsUrl).build()
-        val gson = Gson()
-        val subId = UUID.randomUUID().toString()
-        var nextRequestId = 0
-        var webSocket: WebSocket? = null
-
-        fun sendUnsubscribe(ws: WebSocket) {
-            val params = mapOf("subId" to subId)
-            val msg = mapOf(
-                "jsonrpc" to "2.0",
-                "id" to ++nextRequestId,
-                "method" to "unsubscribe",
-                "params" to params
-            )
-            val json = gson.toJson(msg)
-            Log.d(TAG, "Sending unsubscribe for subId=$subId: $json")
-            ws.send(json)
-        }
-
-        val listener = object : WebSocketListener() {
-            override fun onOpen(ws: WebSocket, response: Response) {
-                Log.d(TAG, "Mint WebSocket open: $wsUrl")
-                webSocket = ws
-                val params = mapOf(
-                    "kind" to "bolt11_mint_quote",
-                    "subId" to subId,
-                    "filters" to listOf(quoteId),
-                )
-                val msg = mapOf(
-                    "jsonrpc" to "2.0",
-                    "id" to nextRequestId,
-                    "method" to "subscribe",
-                    "params" to params,
-                )
-                val json = gson.toJson(msg)
-                Log.d(TAG, "Sending subscribe for subId=$subId, quoteId=$quoteId: $json")
-                ws.send(json)
-            }
-
-            override fun onMessage(ws: WebSocket, text: String) {
-                Log.v(TAG, "Mint WS message: $text")
-                try {
-                    val root = gson.fromJson(text, JsonObject::class.java) ?: return
-
-                    if (root.has("error")) {
-                        val errorObj = root.getAsJsonObject("error")
-                        val code = errorObj["code"]?.asInt
-                        val message = errorObj["message"]?.asString
-                        val ex = Exception("Mint WS error code=$code message=$message")
-                        if (!cont.isCompleted) {
-                            cont.resumeWithException(ex)
-                        }
-                        ws.close(1000, "error")
-                        return
-                    }
-
-                    if (root.has("result")) {
-                        // subscribe/unsubscribe ACK; nothing to do here for now
-                        return
-                    }
-
-                    val method = root.get("method")?.asString ?: return
-                    if (method != "subscribe") return
-
-                    val params = root.getAsJsonObject("params") ?: return
-                    val payload = params.getAsJsonObject("payload") ?: return
-                    val state = payload.get("state")?.asString ?: return
-
-                    Log.d(TAG, "Mint quote update for quoteId=$quoteId state=$state")
-
-                    if (state.equals("PAID", ignoreCase = true) ||
-                        state.equals("ISSUED", ignoreCase = true)
-                    ) {
-                        if (!cont.isCompleted) {
-                            cont.resume(Unit)
-                        }
-                        try {
-                            sendUnsubscribe(ws)
-                        } catch (_: Throwable) {
-                        }
-                        ws.close(1000, "quote paid")
-                    }
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Error parsing mint WS message: ${t.message}", t)
-                    if (!cont.isCompleted) {
-                        cont.resumeWithException(t)
-                    }
-                    ws.close(1000, "parse error")
-                }
-            }
-
-            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "Mint WS failure: ${t.message}", t)
-                if (!cont.isCompleted) {
-                    cont.resumeWithException(t)
-                }
-            }
-
-            override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                Log.d(TAG, "Mint WS closed: code=$code reason=$reason")
-                if (!cont.isCompleted && !cont.isCancelled) {
-                    cont.resumeWithException(
-                        CancellationException("Mint WS closed before quote paid: $code $reason")
-                    )
-                }
-            }
-        }
-
-        val ws = lightningWsClient.newWebSocket(request, listener)
-        webSocket = ws
-
-        cont.invokeOnCancellation {
-            Log.d(TAG, "Coroutine cancelled while waiting for mint quote; closing WS")
-            try {
-                webSocket?.let { socket ->
-                    try {
-                        sendUnsubscribe(socket)
-                    } catch (_: Throwable) {
-                    }
-                    socket.close(1000, "cancelled")
-                }
-            } catch (_: Throwable) {
-            }
-        }
-    }
-
     companion object {
         private const val TAG = "PaymentRequestActivity"
 
@@ -780,12 +614,12 @@ class PaymentRequestActivity : AppCompatActivity() {
         const val RESULT_EXTRA_TOKEN = "payment_token"
         const val RESULT_EXTRA_AMOUNT = "payment_amount"
 
-        // Nostr relays to use for NIP-17 gift-wrapped DMs
-        private val NOSTR_RELAYS = arrayOf(
-            "wss://relay.primal.net",
-            "wss://relay.damus.io",
-            "wss://nos.lol",
-            "wss://nostr.mom"
-        )
+        // Extras for resuming pending payments
+        const val EXTRA_RESUME_PAYMENT_ID = "resume_payment_id"
+        const val EXTRA_LIGHTNING_QUOTE_ID = "lightning_quote_id"
+        const val EXTRA_LIGHTNING_MINT_URL = "lightning_mint_url"
+        const val EXTRA_LIGHTNING_INVOICE = "lightning_invoice"
+        const val EXTRA_NOSTR_SECRET_HEX = "nostr_secret_hex"
+        const val EXTRA_NOSTR_NPROFILE = "nostr_nprofile"
     }
 }

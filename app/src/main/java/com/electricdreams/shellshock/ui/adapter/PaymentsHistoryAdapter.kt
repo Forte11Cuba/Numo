@@ -3,6 +3,7 @@ package com.electricdreams.shellshock.ui.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.electricdreams.shellshock.R
@@ -39,6 +40,7 @@ class PaymentsHistoryAdapter : RecyclerView.Adapter<PaymentsHistoryAdapter.ViewH
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val entry = entries[position]
+        val context = holder.itemView.context
 
         // Display amount in the unit it was entered
         val formattedAmount = if (entry.getEntryUnit() != "sat") {
@@ -50,14 +52,56 @@ class PaymentsHistoryAdapter : RecyclerView.Adapter<PaymentsHistoryAdapter.ViewH
             satAmount.toString()
         }
 
-        val displayAmount = if (entry.amount >= 0) "+$formattedAmount" else formattedAmount
+        // Set amount with appropriate prefix
+        val isPending = entry.isPending()
+        val displayAmount = if (isPending) {
+            formattedAmount // No + prefix for pending
+        } else if (entry.amount >= 0) {
+            "+$formattedAmount"
+        } else {
+            formattedAmount
+        }
         holder.amountText.text = displayAmount
 
         // Set date
         holder.dateText.text = dateFormat.format(entry.date)
 
-        // Set title based on amount (simple logic for now)
-        holder.titleText.text = if (entry.amount > 0) "Cash In" else "Cash Out"
+        // Set title based on status and payment type
+        holder.titleText.text = when {
+            isPending -> "Pending Payment"
+            entry.isLightning() -> "Lightning Payment"
+            entry.isCashu() -> "Cashu Payment"
+            entry.amount > 0 -> "Cash In"
+            else -> "Cash Out"
+        }
+
+        // Set icon based on payment type and status
+        val iconRes = when {
+            isPending -> R.drawable.ic_pending
+            entry.isLightning() -> R.drawable.ic_lightning_bolt
+            else -> R.drawable.ic_bitcoin
+        }
+        holder.icon.setImageResource(iconRes)
+
+        // Set icon tint based on status
+        val iconTint = if (isPending) {
+            context.getColor(R.color.color_warning)
+        } else {
+            context.getColor(R.color.color_text_primary)
+        }
+        holder.icon.setColorFilter(iconTint)
+
+        // Show status for pending payments
+        if (isPending) {
+            holder.statusText.visibility = View.VISIBLE
+            holder.statusText.text = "Tap to resume"
+            holder.statusText.setTextColor(context.getColor(R.color.color_warning))
+        } else {
+            holder.statusText.visibility = View.GONE
+        }
+
+        // Hide subtitle for now (payment type already shown in title)
+        holder.subtitleText.visibility = View.GONE
 
         holder.itemView.setOnClickListener {
             onItemClickListener?.onItemClick(entry, position)
@@ -70,5 +114,8 @@ class PaymentsHistoryAdapter : RecyclerView.Adapter<PaymentsHistoryAdapter.ViewH
         val amountText: TextView = view.findViewById(R.id.amount_text)
         val dateText: TextView = view.findViewById(R.id.date_text)
         val titleText: TextView = view.findViewById(R.id.title_text)
+        val subtitleText: TextView = view.findViewById(R.id.subtitle_text)
+        val statusText: TextView = view.findViewById(R.id.status_text)
+        val icon: ImageView = view.findViewById(R.id.icon)
     }
 }
