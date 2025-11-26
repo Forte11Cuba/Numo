@@ -2,6 +2,7 @@ package com.electricdreams.shellshock.feature.items
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -23,8 +24,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.transition.AutoTransition
+import androidx.transition.Fade
+import androidx.transition.TransitionManager
+import androidx.transition.TransitionSet
 import com.electricdreams.shellshock.PaymentRequestActivity
 import com.electricdreams.shellshock.R
 import com.electricdreams.shellshock.core.model.Amount
@@ -44,6 +50,7 @@ class ItemSelectionActivity : AppCompatActivity() {
     private lateinit var currencyManager: CurrencyManager
 
     // Views
+    private lateinit var mainScrollView: NestedScrollView
     private lateinit var searchInput: EditText
     private lateinit var scanButton: ImageButton
     private lateinit var basketSection: LinearLayout
@@ -55,12 +62,16 @@ class ItemSelectionActivity : AppCompatActivity() {
     private lateinit var noResultsView: LinearLayout
     private lateinit var checkoutContainer: CardView
     private lateinit var checkoutButton: Button
+    private lateinit var coordinatorRoot: ViewGroup
 
     private lateinit var itemsAdapter: ItemsAdapter
     private lateinit var basketAdapter: BasketAdapter
 
     private var allItems: List<Item> = emptyList()
     private var filteredItems: List<Item> = emptyList()
+    
+    // Track previous scroll position for smooth animations
+    private var previousBasketHeight = 0
 
     private val scannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -94,6 +105,8 @@ class ItemSelectionActivity : AppCompatActivity() {
     private fun initViews() {
         findViewById<View>(R.id.back_button).setOnClickListener { finish() }
 
+        coordinatorRoot = findViewById(R.id.coordinator_root)
+        mainScrollView = findViewById(R.id.main_scroll_view)
         searchInput = findViewById(R.id.search_input)
         scanButton = findViewById(R.id.scan_button)
         basketSection = findViewById(R.id.basket_section)
@@ -197,53 +210,118 @@ class ItemSelectionActivity : AppCompatActivity() {
         basketAdapter.updateItems(basketItems)
 
         if (basketItems.isEmpty()) {
-            // Hide basket section with animation
+            // Hide basket section with smooth animation
             if (basketSection.visibility == View.VISIBLE) {
-                animateBasketSection(false)
+                animateBasketSectionOut()
             }
-            checkoutContainer.visibility = View.GONE
+            // Hide checkout button with animation
+            if (checkoutContainer.visibility == View.VISIBLE) {
+                animateCheckoutButton(false)
+            }
         } else {
-            // Show basket section with animation
+            // Show basket section with smooth animation
             if (basketSection.visibility != View.VISIBLE) {
-                animateBasketSection(true)
+                animateBasketSectionIn()
             }
-            checkoutContainer.visibility = View.VISIBLE
+            // Show checkout button with animation
+            if (checkoutContainer.visibility != View.VISIBLE) {
+                animateCheckoutButton(true)
+            }
             updateCheckoutButton()
         }
 
         updateBasketTotal()
     }
 
-    private fun animateBasketSection(show: Boolean) {
+    /**
+     * Smooth fade-in animation for basket section appearing
+     * Uses Apple-like spring interpolation for natural motion
+     */
+    private fun animateBasketSectionIn() {
+        basketSection.visibility = View.VISIBLE
+        basketSection.alpha = 0f
+        basketSection.translationY = 50f // Slide up from below
+        basketSection.scaleY = 0.95f
+
+        val fadeIn = ObjectAnimator.ofFloat(basketSection, View.ALPHA, 0f, 1f)
+        val slideUp = ObjectAnimator.ofFloat(basketSection, View.TRANSLATION_Y, 50f, 0f)
+        val scaleUp = ObjectAnimator.ofFloat(basketSection, View.SCALE_Y, 0.95f, 1f)
+
+        AnimatorSet().apply {
+            playTogether(fadeIn, slideUp, scaleUp)
+            duration = 350
+            interpolator = android.view.animation.OvershootInterpolator(0.8f)
+            start()
+        }
+    }
+
+    /**
+     * Smooth fade-out animation for basket section disappearing
+     * Uses decelerate for natural exit motion
+     */
+    private fun animateBasketSectionOut() {
+        val fadeOut = ObjectAnimator.ofFloat(basketSection, View.ALPHA, 1f, 0f)
+        val slideDown = ObjectAnimator.ofFloat(basketSection, View.TRANSLATION_Y, 0f, 30f)
+        val scaleDown = ObjectAnimator.ofFloat(basketSection, View.SCALE_Y, 1f, 0.97f)
+
+        AnimatorSet().apply {
+            playTogether(fadeOut, slideDown, scaleDown)
+            duration = 250
+            interpolator = DecelerateInterpolator(1.5f)
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    basketSection.visibility = View.GONE
+                    basketSection.translationY = 0f
+                    basketSection.scaleY = 1f
+                }
+            })
+            start()
+        }
+    }
+
+    /**
+     * Smooth animation for checkout button appearing/disappearing
+     * Apple-style bounce effect on appear
+     */
+    private fun animateCheckoutButton(show: Boolean) {
         if (show) {
-            basketSection.visibility = View.VISIBLE
-            basketSection.alpha = 0f
-            basketSection.translationY = -50f
+            checkoutContainer.visibility = View.VISIBLE
+            checkoutContainer.alpha = 0f
+            checkoutContainer.translationY = 80f
+            checkoutContainer.scaleX = 0.9f
+            checkoutContainer.scaleY = 0.9f
+
+            val fadeIn = ObjectAnimator.ofFloat(checkoutContainer, View.ALPHA, 0f, 1f)
+            val slideUp = ObjectAnimator.ofFloat(checkoutContainer, View.TRANSLATION_Y, 80f, 0f)
+            val scaleX = ObjectAnimator.ofFloat(checkoutContainer, View.SCALE_X, 0.9f, 1f)
+            val scaleY = ObjectAnimator.ofFloat(checkoutContainer, View.SCALE_Y, 0.9f, 1f)
 
             AnimatorSet().apply {
-                playTogether(
-                    ObjectAnimator.ofFloat(basketSection, "alpha", 0f, 1f),
-                    ObjectAnimator.ofFloat(basketSection, "translationY", -50f, 0f)
-                )
-                duration = 300
-                interpolator = DecelerateInterpolator()
+                playTogether(fadeIn, slideUp, scaleX, scaleY)
+                duration = 400
+                interpolator = android.view.animation.OvershootInterpolator(1.0f)
                 start()
             }
         } else {
-            val animSet = AnimatorSet().apply {
-                playTogether(
-                    ObjectAnimator.ofFloat(basketSection, "alpha", 1f, 0f),
-                    ObjectAnimator.ofFloat(basketSection, "translationY", 0f, -50f)
-                )
+            val fadeOut = ObjectAnimator.ofFloat(checkoutContainer, View.ALPHA, 1f, 0f)
+            val slideDown = ObjectAnimator.ofFloat(checkoutContainer, View.TRANSLATION_Y, 0f, 60f)
+            val scaleX = ObjectAnimator.ofFloat(checkoutContainer, View.SCALE_X, 1f, 0.95f)
+            val scaleY = ObjectAnimator.ofFloat(checkoutContainer, View.SCALE_Y, 1f, 0.95f)
+
+            AnimatorSet().apply {
+                playTogether(fadeOut, slideDown, scaleX, scaleY)
                 duration = 200
-                interpolator = DecelerateInterpolator()
+                interpolator = DecelerateInterpolator(1.5f)
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        checkoutContainer.visibility = View.GONE
+                        checkoutContainer.translationY = 0f
+                        checkoutContainer.scaleX = 1f
+                        checkoutContainer.scaleY = 1f
+                    }
+                })
+                start()
             }
-            animSet.addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    basketSection.visibility = View.GONE
-                }
-            })
-            animSet.start()
         }
     }
 
