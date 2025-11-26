@@ -301,6 +301,21 @@ class ItemManager private constructor(context: Context) {
     }
 
     /**
+     * Reorder items by moving an item from one position to another.
+     * @param fromPosition The current position of the item.
+     * @param toPosition The target position to move the item to.
+     */
+    fun reorderItems(fromPosition: Int, toPosition: Int) {
+        if (fromPosition < 0 || fromPosition >= items.size ||
+            toPosition < 0 || toPosition >= items.size) {
+            return
+        }
+        val item = items.removeAt(fromPosition)
+        items.add(toPosition, item)
+        saveItems()
+    }
+
+    /**
      * Import items from a CSV file.
      * @param csvFilePath Path to the CSV file.
      * @param clearExisting Whether to clear existing items before importing.
