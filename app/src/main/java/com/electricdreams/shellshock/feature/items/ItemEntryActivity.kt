@@ -1,73 +1,78 @@
 package com.electricdreams.shellshock.feature.items
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
-import android.text.TextUtils
 import android.view.View
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import com.electricdreams.shellshock.R
 import com.electricdreams.shellshock.core.model.Item
+import com.electricdreams.shellshock.core.model.PriceType
+import com.electricdreams.shellshock.core.util.CurrencyManager
 import com.electricdreams.shellshock.core.util.ItemManager
-import java.io.File
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.UUID
+import com.electricdreams.shellshock.feature.items.handlers.*
 
+/**
+ * Activity for adding or editing catalog items.
+ * Delegates to specialized handlers for different concerns:
+ * - CategoryTagHandler: category tag management
+ * - PricingHandler: price type and VAT calculations
+ * - InventoryHandler: inventory tracking
+ * - ImageHandler: photo capture/selection
+ * - SkuHandler: SKU validation and barcode scanning
+ * - ItemFormValidator: form validation
+ * - ItemBuilder: item object construction
+ */
 class ItemEntryActivity : AppCompatActivity() {
 
+    // UI Elements - Basic Info
     private lateinit var nameInput: EditText
     private lateinit var variationInput: EditText
-    private lateinit var priceInput: EditText
-    private lateinit var skuInput: EditText
-    private lateinit var descriptionInput: EditText
     private lateinit var categoryInput: EditText
-    private lateinit var quantityInput: EditText
-    private lateinit var alertCheckbox: CheckBox
-    private lateinit var alertThresholdInput: EditText
-    private lateinit var itemImageView: ImageView
-    private lateinit var imagePlaceholder: ImageView
-    private lateinit var addImageButton: Button
-    private lateinit var removeImageButton: Button
+    private lateinit var descriptionInput: EditText
 
+    // Managers
     private lateinit var itemManager: ItemManager
+    private lateinit var currencyManager: CurrencyManager
+
+    // Handlers
+    private lateinit var categoryTagHandler: CategoryTagHandler
+    private lateinit var pricingHandler: PricingHandler
+    private lateinit var inventoryHandler: InventoryHandler
+    private lateinit var imageHandler: ImageHandler
+    private lateinit var skuHandler: SkuHandler
+    private lateinit var formValidator: ItemFormValidator
+    private val itemBuilder = ItemBuilder()
+
+    // State
     private var editItemId: String? = null
     private var isEditMode: Boolean = false
-    private var selectedImageUri: Uri? = null
     private var currentItem: Item? = null
-    private var currentPhotoPath: String? = null
 
+    // Activity Result Launchers
     private val selectGalleryLauncher: ActivityResultLauncher<String> =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            if (uri != null) {
-                selectedImageUri = uri
-                updateImagePreview()
-            }
+            imageHandler.handleGalleryResult(uri)
         }
 
     private val takePictureLauncher: ActivityResultLauncher<Uri> =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-            if (success && selectedImageUri != null) {
-                updateImagePreview()
+            imageHandler.handleCameraResult(success)
+        }
+
+    private val barcodeScanLauncher: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val barcodeValue = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE_VALUE)
+                skuHandler.handleBarcodeScanResult(barcodeValue)
             }
         }
 
@@ -75,181 +80,181 @@ class ItemEntryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_item_entry)
 
-        nameInput = findViewById(R.id.item_name_input)
-        variationInput = findViewById(R.id.item_variation_input)
-        priceInput = findViewById(R.id.item_price_input)
-        skuInput = findViewById(R.id.item_sku_input)
-        descriptionInput = findViewById(R.id.item_description_input)
-        categoryInput = findViewById(R.id.item_category_input)
-        quantityInput = findViewById(R.id.item_quantity_input)
-        alertCheckbox = findViewById(R.id.item_alert_checkbox)
-        alertThresholdInput = findViewById(R.id.item_alert_threshold_input)
-        itemImageView = findViewById(R.id.item_image_view)
-        imagePlaceholder = findViewById(R.id.item_image_placeholder)
-        addImageButton = findViewById(R.id.item_add_image_button)
-        removeImageButton = findViewById(R.id.item_remove_image_button)
-
-        val cancelButton: Button = findViewById(R.id.item_cancel_button)
-        val saveButton: Button = findViewById(R.id.item_save_button)
-        val backButton: View? = findViewById(R.id.back_button)
-
-        addImageButton.setOnClickListener { showImageSourceDialog() }
-        removeImageButton.setOnClickListener { removeImage() }
-
-        itemManager = ItemManager.getInstance(this)
+        initializeManagers()
+        initializeViews()
+        initializeHandlers()
+        setupClickListeners()
 
         editItemId = intent.getStringExtra(EXTRA_ITEM_ID)
         isEditMode = !editItemId.isNullOrEmpty()
 
-        alertCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            alertThresholdInput.isEnabled = isChecked
-        }
-
         if (isEditMode) {
-            val toolbarTitle: TextView? = findViewById(R.id.toolbar_title)
-            toolbarTitle?.text = "Edit Item"
-
-            cancelButton.text = "Delete Item"
-            cancelButton.setTextColor(resources.getColor(R.color.color_warning_red, null))
-
+            setupEditMode()
             loadItemData()
         }
-
-        if (isEditMode) {
-            cancelButton.setOnClickListener { showDeleteConfirmationDialog() }
-        } else {
-            cancelButton.setOnClickListener { finish() }
-        }
-
-        saveButton.setOnClickListener { saveItem() }
-        backButton?.setOnClickListener { finish() }
     }
 
-    private fun showDeleteConfirmationDialog() {
-        val builder = AlertDialog.Builder(this)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_delete_confirmation, null)
-        builder.setView(dialogView)
+    private fun initializeManagers() {
+        itemManager = ItemManager.getInstance(this)
+        currencyManager = CurrencyManager.getInstance(this)
+    }
 
-        val dialog = builder.create()
+    private fun initializeViews() {
+        nameInput = findViewById(R.id.item_name_input)
+        variationInput = findViewById(R.id.item_variation_input)
+        categoryInput = findViewById(R.id.item_category_input)
+        descriptionInput = findViewById(R.id.item_description_input)
+    }
 
-        val cancelButton: Button = dialogView.findViewById(R.id.dialog_cancel_button)
-        val confirmButton: Button = dialogView.findViewById(R.id.dialog_confirm_button)
+    private fun initializeHandlers() {
+        initializeCategoryHandler()
+        initializePricingHandler()
+        initializeInventoryHandler()
+        initializeImageHandler()
+        initializeSkuHandler()
+        initializeFormValidator()
+    }
 
-        cancelButton.setOnClickListener { dialog.dismiss() }
+    private fun initializeCategoryHandler() {
+        categoryTagHandler = CategoryTagHandler(
+            context = this,
+            categoryTagsContainer = findViewById(R.id.category_tags_container),
+            newCategoryContainer = findViewById(R.id.new_category_container),
+            newCategoryInput = findViewById(R.id.new_category_input),
+            btnConfirmCategory = findViewById(R.id.btn_confirm_category),
+            btnCancelCategory = findViewById(R.id.btn_cancel_category),
+            categoryInput = categoryInput,
+            itemManager = itemManager
+        )
+        categoryTagHandler.initialize()
+    }
 
-        confirmButton.setOnClickListener {
-            currentItem?.let { item ->
-                itemManager.removeItem(item.id!!)
-                setResult(RESULT_OK)
-                dialog.dismiss()
-                finish()
-            }
+    private fun initializePricingHandler() {
+        pricingHandler = PricingHandler(
+            priceTypeToggle = findViewById(R.id.price_type_toggle),
+            btnPriceFiat = findViewById(R.id.btn_price_fiat),
+            btnPriceBitcoin = findViewById(R.id.btn_price_bitcoin),
+            fiatPriceContainer = findViewById(R.id.fiat_price_container),
+            satsPriceContainer = findViewById(R.id.sats_price_container),
+            priceInput = findViewById(R.id.item_price_input),
+            satsInput = findViewById(R.id.item_sats_input),
+            currencySymbol = findViewById(R.id.currency_symbol),
+            currencyCode = findViewById(R.id.currency_code),
+            vatSectionCard = findViewById(R.id.vat_section_card),
+            switchVatEnabled = findViewById(R.id.switch_vat_enabled),
+            vatFieldsContainer = findViewById(R.id.vat_fields_container),
+            switchPriceIncludesVat = findViewById(R.id.switch_price_includes_vat),
+            vatRateInput = findViewById(R.id.vat_rate_input),
+            priceBreakdownContainer = findViewById(R.id.price_breakdown_container),
+            textNetPrice = findViewById(R.id.text_net_price),
+            textVatLabel = findViewById(R.id.text_vat_label),
+            textVatAmount = findViewById(R.id.text_vat_amount),
+            textGrossPrice = findViewById(R.id.text_gross_price),
+            currencyManager = currencyManager
+        )
+        pricingHandler.initialize()
+    }
+
+    private fun initializeInventoryHandler() {
+        inventoryHandler = InventoryHandler(
+            switchTrackInventory = findViewById(R.id.switch_track_inventory),
+            inventoryFieldsContainer = findViewById(R.id.inventory_fields_container),
+            quantityInput = findViewById(R.id.item_quantity_input),
+            alertCheckbox = findViewById(R.id.item_alert_checkbox),
+            alertThresholdContainer = findViewById(R.id.alert_threshold_container),
+            alertThresholdInput = findViewById(R.id.item_alert_threshold_input)
+        )
+        inventoryHandler.initialize()
+    }
+
+    private fun initializeImageHandler() {
+        imageHandler = ImageHandler(
+            activity = this,
+            itemImageView = findViewById(R.id.item_image_view),
+            imagePlaceholder = findViewById(R.id.item_image_placeholder),
+            addImageButton = findViewById(R.id.item_add_image_button),
+            removeImageButton = findViewById(R.id.item_remove_image_button),
+            itemManager = itemManager,
+            selectGalleryLauncher = selectGalleryLauncher,
+            takePictureLauncher = takePictureLauncher
+        )
+        imageHandler.initialize()
+    }
+
+    private fun initializeSkuHandler() {
+        skuHandler = SkuHandler(
+            activity = this,
+            skuInput = findViewById(R.id.item_sku_input),
+            skuContainer = findViewById(R.id.sku_container),
+            skuErrorText = findViewById(R.id.sku_error_text),
+            scanBarcodeButton = findViewById(R.id.btn_scan_barcode),
+            itemManager = itemManager,
+            barcodeScanLauncher = barcodeScanLauncher
+        )
+        skuHandler.setEditItemId(editItemId)
+        skuHandler.initialize()
+    }
+
+    private fun initializeFormValidator() {
+        formValidator = ItemFormValidator(
+            activity = this,
+            nameInput = nameInput,
+            pricingHandler = pricingHandler,
+            inventoryHandler = inventoryHandler,
+            skuHandler = skuHandler
+        )
+    }
+
+    private fun setupClickListeners() {
+        findViewById<View>(R.id.back_button)?.setOnClickListener { finish() }
+        findViewById<Button>(R.id.item_save_button).setOnClickListener { saveItem() }
+        findViewById<Button>(R.id.item_cancel_button).setOnClickListener {
+            if (isEditMode) showDeleteConfirmationDialog() else finish()
         }
+    }
 
-        dialog.show()
+    private fun setupEditMode() {
+        findViewById<TextView>(R.id.toolbar_title)?.text = "Edit Item"
+        findViewById<Button>(R.id.item_cancel_button).apply {
+            text = "Delete Item"
+            setTextColor(ContextCompat.getColor(this@ItemEntryActivity, R.color.color_warning_red))
+        }
     }
 
     private fun loadItemData() {
-        for (item in itemManager.getAllItems()) {
-            if (item.id == editItemId) {
-                currentItem = item
+        val item = itemManager.getAllItems().find { it.id == editItemId } ?: return
+        currentItem = item
+        imageHandler.setCurrentItem(item)
 
-                nameInput.setText(item.name)
-                variationInput.setText(item.variationName)
-                priceInput.setText(item.price.toString())
-                skuInput.setText(item.sku)
-                descriptionInput.setText(item.description)
-                categoryInput.setText(item.category)
-                quantityInput.setText(item.quantity.toString())
-                alertCheckbox.isChecked = item.isAlertEnabled()
-                alertThresholdInput.isEnabled = item.isAlertEnabled()
-                alertThresholdInput.setText(item.alertThreshold.toString())
+        // Basic info
+        nameInput.setText(item.name)
+        variationInput.setText(item.variationName)
+        descriptionInput.setText(item.description)
 
-                if (!item.imagePath.isNullOrEmpty()) {
-                    val bitmap = itemManager.loadItemImage(item)
-                    if (bitmap != null) {
-                        itemImageView.setImageBitmap(bitmap)
-                        itemImageView.visibility = View.VISIBLE
-                        imagePlaceholder.visibility = View.GONE
-                        removeImageButton.visibility = View.VISIBLE
-                    }
-                }
+        // Delegated loading
+        categoryTagHandler.setSelectedCategory(item.category)
+        skuHandler.setSku(item.sku)
+        loadPricingData(item)
+        loadInventoryData(item)
+        imageHandler.loadItemImage(item)
+    }
 
-                break
+    private fun loadPricingData(item: Item) {
+        pricingHandler.setCurrentPriceType(item.priceType)
+        when (item.priceType) {
+            PriceType.FIAT -> {
+                val displayPrice = if (item.vatEnabled) item.getGrossPrice() else item.price
+                pricingHandler.setFiatPrice(displayPrice)
             }
+            PriceType.SATS -> pricingHandler.setSatsPrice(item.priceSats)
         }
+        pricingHandler.setVatFields(item.vatEnabled, item.vatRate, true)
     }
 
-    private fun showImageSourceDialog() {
-        val options = arrayOf("Take Photo", "Choose from Gallery")
-        AlertDialog.Builder(this)
-            .setTitle("Add Picture")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> takePicture()
-                    1 -> selectFromGallery()
-                }
-            }
-            .show()
-    }
-
-    private fun selectFromGallery() {
-        selectGalleryLauncher.launch("image/*")
-    }
-
-    private fun takePicture() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_IMAGE_CAPTURE)
-            return
-        }
-
-        try {
-            val photoFile = createImageFile()
-            selectedImageUri = FileProvider.getUriForFile(
-                this,
-                "com.electricdreams.shellshock.fileprovider",
-                photoFile,
-            )
-            takePictureLauncher.launch(selectedImageUri)
-        } catch (ex: IOException) {
-            Toast.makeText(this, "Error creating image file: ${ex.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    @Throws(IOException::class)
-    private fun createImageFile(): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val imageFileName = "JPEG_${timeStamp}_"
-        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        val image = File.createTempFile(imageFileName, ".jpg", storageDir)
-        currentPhotoPath = image.absolutePath
-        return image
-    }
-
-    private fun removeImage() {
-        selectedImageUri = null
-        itemImageView.setImageBitmap(null)
-        itemImageView.visibility = View.VISIBLE
-        imagePlaceholder.visibility = View.VISIBLE
-        removeImageButton.visibility = View.GONE
-
-        if (isEditMode && currentItem?.imagePath != null) {
-            currentItem?.let { itemManager.deleteItemImage(it) }
-        }
-    }
-
-    private fun updateImagePreview() {
-        selectedImageUri?.let { uri ->
-            try {
-                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-                itemImageView.setImageBitmap(bitmap)
-                itemImageView.visibility = View.VISIBLE
-                imagePlaceholder.visibility = View.GONE
-                removeImageButton.visibility = View.VISIBLE
-            } catch (e: Exception) {
-                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
-            }
-        }
+    private fun loadInventoryData(item: Item) {
+        inventoryHandler.setTrackingEnabled(item.trackInventory)
+        inventoryHandler.setQuantity(item.quantity)
+        inventoryHandler.setAlertSettings(item.alertEnabled, item.alertThreshold)
     }
 
     override fun onRequestPermissionsResult(
@@ -258,109 +263,73 @@ class ItemEntryActivity : AppCompatActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_IMAGE_CAPTURE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                takePicture()
-            } else {
-                Toast.makeText(this, "Camera permission is required to take pictures", Toast.LENGTH_SHORT).show()
-            }
+        if (requestCode == ImageHandler.REQUEST_IMAGE_CAPTURE) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+            imageHandler.handlePermissionResult(granted)
         }
     }
 
+    private fun showDeleteConfirmationDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_delete_confirmation, null)
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+
+        dialogView.findViewById<Button>(R.id.dialog_cancel_button).setOnClickListener { 
+            dialog.dismiss() 
+        }
+        dialogView.findViewById<Button>(R.id.dialog_confirm_button).setOnClickListener {
+            currentItem?.let { item ->
+                itemManager.removeItem(item.id!!)
+                setResult(RESULT_OK)
+                dialog.dismiss()
+                finish()
+            }
+        }
+        dialog.show()
+    }
+
     private fun saveItem() {
-        val name = nameInput.text.toString().trim()
-        if (TextUtils.isEmpty(name)) {
-            nameInput.error = "Item name is required"
-            nameInput.requestFocus()
-            return
-        }
+        val validationResult = formValidator.validate()
+        if (!validationResult.isValid) return
 
-        val priceStr = priceInput.text.toString().trim()
-        if (TextUtils.isEmpty(priceStr)) {
-            priceInput.error = "Price is required"
-            priceInput.requestFocus()
-            return
-        }
+        val item = itemBuilder.build(
+            validationResult = validationResult,
+            isEditMode = isEditMode,
+            editItemId = editItemId,
+            currentItem = currentItem,
+            variationName = variationInput.text.toString().trim(),
+            category = categoryTagHandler.getSelectedCategory(),
+            description = descriptionInput.text.toString().trim(),
+            sku = skuHandler.getSku(),
+            priceType = pricingHandler.getCurrentPriceType(),
+            currency = currencyManager.getCurrentCurrency(),
+            vatEnabled = pricingHandler.isVatEnabled(),
+            vatRate = pricingHandler.getVatRate(),
+            trackInventory = inventoryHandler.isTrackingEnabled(),
+            alertEnabled = inventoryHandler.isAlertEnabled(),
+            hasNewImage = imageHandler.selectedImageUri != null
+        )
 
-        val price = priceStr.toDoubleOrNull()
-        if (price == null || price < 0) {
-            priceInput.error = "Price must be a positive number"
-            priceInput.requestFocus()
-            return
-        }
-
-        val quantityStr = quantityInput.text.toString().trim()
-        var quantity = 0
-        if (!TextUtils.isEmpty(quantityStr)) {
-            val q = quantityStr.toIntOrNull()
-            if (q == null || q < 0) {
-                quantityInput.error = "Quantity must be positive"
-                quantityInput.requestFocus()
-                return
-            }
-            quantity = q
-        }
-
-        var alertThreshold = 5
-        if (alertCheckbox.isChecked) {
-            val thresholdStr = alertThresholdInput.text.toString().trim()
-            if (!TextUtils.isEmpty(thresholdStr)) {
-                val t = thresholdStr.toIntOrNull()
-                if (t == null || t < 0) {
-                    alertThresholdInput.error = "Threshold must be positive"
-                    alertThresholdInput.requestFocus()
-                    return
-                }
-                alertThreshold = t
-            }
-        }
-
-        val item = Item().apply {
-            if (isEditMode) {
-                id = editItemId
-                if (currentItem?.imagePath != null && selectedImageUri == null) {
-                    imagePath = currentItem?.imagePath
-                }
-            } else {
-                id = UUID.randomUUID().toString()
-            }
-
-            this.name = name
-            variationName = variationInput.text.toString().trim()
-            this.price = price
-            sku = skuInput.text.toString().trim()
-            description = descriptionInput.text.toString().trim()
-            category = categoryInput.text.toString().trim()
-            this.quantity = quantity
-            alertEnabled = alertCheckbox.isChecked
-            this.alertThreshold = alertThreshold
-        }
-
-        val success = if (isEditMode) {
-            itemManager.updateItem(item)
-        } else {
-            itemManager.addItem(item)
-        }
-
+        val success = if (isEditMode) itemManager.updateItem(item) else itemManager.addItem(item)
         if (!success) {
             Toast.makeText(this, "Failed to save item", Toast.LENGTH_SHORT).show()
             return
         }
 
-        selectedImageUri?.let { uri ->
-            val imageSaved = itemManager.saveItemImage(item, uri)
-            if (!imageSaved) {
-                Toast.makeText(this, "Item saved but image could not be saved", Toast.LENGTH_LONG).show()
-            }
-        }
-
+        saveImageIfNeeded(item)
         setResult(RESULT_OK)
         finish()
     }
 
+    private fun saveImageIfNeeded(item: Item) {
+        imageHandler.selectedImageUri?.let { uri ->
+            if (!itemManager.saveItemImage(item, uri)) {
+                Toast.makeText(this, "Item saved but image could not be saved", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     companion object {
         const val EXTRA_ITEM_ID = "extra_item_id"
-        private const val REQUEST_IMAGE_CAPTURE = 1001
-        private const val REQUEST_PICK_IMAGE = 1002
     }
 }

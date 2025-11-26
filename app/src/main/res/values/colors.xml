@@ -11,6 +11,7 @@
     <color name="color_bg_white">#FFFFFF</color>
     <color name="color_bg_light">#F6F7F8</color>
     <color name="color_bg_secondary">#F1F2F6</color>
+    <color name="color_bg_tertiary">#E8E9ED</color>
     <color name="color_bg_surface">#F2F2F7</color>
     <color name="color_bg_card">#FFFFFF</color>
     <color name="color_search_bg">#F1F2F6</color>
@@ -22,6 +23,7 @@
     <color name="color_text_tertiary">#9B9B9F</color>
     <color name="color_icon_inactive">#C5C5CC</color>
     <color name="color_icon_secondary">#9B9B9F</color>
+    <color name="color_icon_tertiary">#C7C7CC</color>
 
     <!-- Chip & Border Colors -->
     <color name="color_chip_border">#E1E1E5</color>
@@ -31,6 +33,8 @@
     <color name="color_warning">#FF9500</color>
     <color name="color_warning_red">#FF4B4B</color>
     <color name="color_info_blue">#83E8FC</color>
+    <color name="color_bitcoin_orange">#F7931A</color>
+    <color name="color_accent_blue">#007AFF</color>
 
     <!-- Overlays -->
     <color name="color_scrim">#66000000</color>

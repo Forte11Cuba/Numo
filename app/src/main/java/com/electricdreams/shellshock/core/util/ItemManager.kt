@@ -68,6 +68,13 @@ class ItemManager private constructor(context: Context) {
                         name = obj.getString("name")
                         price = obj.getDouble("price")
 
+                        // UUID - generate if missing (migration for old items)
+                        uuid = if (!obj.isNull("uuid")) {
+                            obj.getString("uuid")
+                        } else {
+                            UUID.randomUUID().toString()
+                        }
+
                         if (!obj.isNull("variationName")) {
                             variationName = obj.getString("variationName")
                         }
@@ -95,6 +102,30 @@ class ItemManager private constructor(context: Context) {
                         if (!obj.isNull("imagePath")) {
                             imagePath = obj.getString("imagePath")
                         }
+                        // New fields for sats/fiat pricing
+                        if (!obj.isNull("priceSats")) {
+                            priceSats = obj.getLong("priceSats")
+                        }
+                        if (!obj.isNull("priceType")) {
+                            priceType = try {
+                                com.electricdreams.shellshock.core.model.PriceType.valueOf(obj.getString("priceType"))
+                            } catch (e: IllegalArgumentException) {
+                                com.electricdreams.shellshock.core.model.PriceType.FIAT
+                            }
+                        }
+                        if (!obj.isNull("priceCurrency")) {
+                            priceCurrency = obj.getString("priceCurrency")
+                        }
+                        if (!obj.isNull("trackInventory")) {
+                            trackInventory = obj.getBoolean("trackInventory")
+                        }
+                        // VAT fields
+                        if (!obj.isNull("vatEnabled")) {
+                            vatEnabled = obj.getBoolean("vatEnabled")
+                        }
+                        if (!obj.isNull("vatRate")) {
+                            vatRate = obj.getInt("vatRate")
+                        }
                     }
 
                     items.add(item)
@@ -116,6 +147,7 @@ class ItemManager private constructor(context: Context) {
             for (item in items) {
                 val obj = JSONObject().apply {
                     put("id", item.id)
+                    put("uuid", item.uuid)
                     put("name", item.name)
                     put("price", item.price)
 
@@ -129,6 +161,16 @@ class ItemManager private constructor(context: Context) {
                     put("alertEnabled", item.alertEnabled)
                     put("alertThreshold", item.alertThreshold)
                     item.imagePath?.let { put("imagePath", it) }
+                    
+                    // New fields for sats/fiat pricing
+                    put("priceSats", item.priceSats)
+                    put("priceType", item.priceType.name)
+                    put("priceCurrency", item.priceCurrency)
+                    put("trackInventory", item.trackInventory)
+                    
+                    // VAT fields
+                    put("vatEnabled", item.vatEnabled)
+                    put("vatRate", item.vatRate)
                 }
                 array.put(obj)
             }
@@ -145,6 +187,58 @@ class ItemManager private constructor(context: Context) {
      * @return List of items.
      */
     fun getAllItems(): List<Item> = ArrayList(items)
+
+    /**
+     * Find an item by its SKU (barcode).
+     * @param sku SKU to search for.
+     * @return Item if found, null otherwise.
+     */
+    fun findItemBySku(sku: String): Item? {
+        return items.find { it.sku?.equals(sku, ignoreCase = true) == true }
+    }
+
+    /**
+     * Check if a SKU already exists in the catalog.
+     * @param sku SKU to check.
+     * @param excludeItemId Optional item ID to exclude from the check (for editing existing items).
+     * @return true if SKU exists (and belongs to a different item), false otherwise.
+     */
+    fun isSkuDuplicate(sku: String, excludeItemId: String? = null): Boolean {
+        if (sku.isBlank()) return false
+        return items.any { item ->
+            item.sku?.equals(sku, ignoreCase = true) == true && item.id != excludeItemId
+        }
+    }
+
+    /**
+     * Get all unique categories from existing items.
+     * @return Sorted list of unique category names (non-null, non-empty).
+     */
+    fun getAllCategories(): List<String> {
+        return items
+            .mapNotNull { it.category }
+            .filter { it.isNotBlank() }
+            .map { it.trim() }
+            .distinct()
+            .sorted()
+    }
+
+    /**
+     * Search items by name, SKU, or variation.
+     * @param query Search query.
+     * @return List of matching items.
+     */
+    fun searchItems(query: String): List<Item> {
+        if (query.isBlank()) return ArrayList(items)
+        
+        val lowerQuery = query.lowercase().trim()
+        return items.filter { item ->
+            item.name?.lowercase()?.contains(lowerQuery) == true ||
+            item.sku?.lowercase()?.contains(lowerQuery) == true ||
+            item.variationName?.lowercase()?.contains(lowerQuery) == true ||
+            item.category?.lowercase()?.contains(lowerQuery) == true
+        }
+    }
 
     /**
      * Add an item to the catalog.

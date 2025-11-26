@@ -21,7 +21,11 @@
     <color name="color_text_tertiary">#808084</color>
     <color name="color_icon_inactive">#505054</color>
     <color name="color_icon_secondary">#B0B0B3</color>
+    <color name="color_icon_tertiary">#656569</color>
 
     <!-- Chip & Border Colors -->
     <color name="color_chip_border">#3A3F44</color>
+    
+    <!-- Accent Colors for dark mode -->
+    <color name="color_accent_blue">#409CFF</color>
 </resources>

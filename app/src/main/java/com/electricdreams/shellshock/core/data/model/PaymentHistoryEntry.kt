@@ -74,7 +74,24 @@ data class PaymentHistoryEntry(
     /** Ephemeral nostr secret key (hex) for resuming NIP-17 listening */
     @SerializedName("nostrSecretHex")
     val nostrSecretHex: String? = null,
+
+    /** Serialized checkout basket JSON (if payment originated from item checkout) */
+    @SerializedName("checkoutBasketJson")
+    val checkoutBasketJson: String? = null,
 ) {
+
+    /**
+     * Get the checkout basket if this payment originated from item checkout.
+     * Returns null for manual amount entry payments.
+     */
+    fun getCheckoutBasket(): com.electricdreams.shellshock.core.model.CheckoutBasket? {
+        return com.electricdreams.shellshock.core.model.CheckoutBasket.fromJson(checkoutBasketJson)
+    }
+
+    /**
+     * Check if this payment has associated checkout basket data.
+     */
+    fun hasCheckoutBasket(): Boolean = !checkoutBasketJson.isNullOrEmpty()
 
     /** Public, non-null view of the token unit. */
     fun getUnit(): String = rawUnit ?: "sat"
@@ -162,6 +179,7 @@ data class PaymentHistoryEntry(
             bitcoinPrice: Double?,
             paymentRequest: String?,
             formattedAmount: String?,
+            checkoutBasketJson: String? = null,
         ): PaymentHistoryEntry {
             return PaymentHistoryEntry(
                 id = UUID.randomUUID().toString(),
@@ -177,6 +195,7 @@ data class PaymentHistoryEntry(
                 rawStatus = STATUS_PENDING,
                 paymentType = null,
                 formattedAmount = formattedAmount,
+                checkoutBasketJson = checkoutBasketJson,
             )
         }
     }

@@ -76,6 +76,9 @@ class PaymentRequestActivity : AppCompatActivity() {
     private var resumeNostrSecretHex: String? = null
     private var resumeNostrNprofile: String? = null
 
+    // Checkout basket data (for item-based checkouts)
+    private var checkoutBasketJson: String? = null
+
     private val uiScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -154,6 +157,9 @@ class PaymentRequestActivity : AppCompatActivity() {
         resumeNostrSecretHex = intent.getStringExtra(EXTRA_NOSTR_SECRET_HEX)
         resumeNostrNprofile = intent.getStringExtra(EXTRA_NOSTR_NPROFILE)
 
+        // Get checkout basket data (for item-based checkouts)
+        checkoutBasketJson = intent.getStringExtra(EXTRA_CHECKOUT_BASKET_JSON)
+
         // Display amount (without "Pay" prefix since it's in the label above)
         largeAmountDisplay.text = formattedAmountString
 
@@ -217,9 +223,10 @@ class PaymentRequestActivity : AppCompatActivity() {
             bitcoinPrice = bitcoinPrice,
             paymentRequest = null, // Will be set after payment request is created
             formattedAmount = formattedAmountString,
+            checkoutBasketJson = checkoutBasketJson,
         )
 
-        Log.d(TAG, "Created pending payment with id=$pendingPaymentId")
+        Log.d(TAG, "Created pending payment with id=$pendingPaymentId, hasBasket=${checkoutBasketJson != null}")
     }
 
     private fun updateConvertedAmount(formattedAmountString: String) {
@@ -657,5 +664,8 @@ class PaymentRequestActivity : AppCompatActivity() {
         const val EXTRA_LIGHTNING_INVOICE = "lightning_invoice"
         const val EXTRA_NOSTR_SECRET_HEX = "nostr_secret_hex"
         const val EXTRA_NOSTR_NPROFILE = "nostr_nprofile"
+
+        // Extra for checkout basket data
+        const val EXTRA_CHECKOUT_BASKET_JSON = "checkout_basket_json"
     }
 }

@@ -1,5 +1,7 @@
 package com.electricdreams.shellshock.core.model
 
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -7,6 +9,12 @@ import java.util.Locale
  * Represents a monetary amount with currency.
  * For BTC: [value] is satoshis.
  * For fiat currencies: [value] is minor units (e.g. cents).
+ * 
+ * Formatting follows currency conventions:
+ * - USD, GBP: period as decimal separator (e.g., $4.20, £4.20)
+ * - EUR: comma as decimal separator (e.g., €4,20)
+ * - JPY: no decimal places (e.g., ¥420)
+ * - BTC: comma as thousand separator, no decimals (e.g., ₿1,000)
  */
 data class Amount(
     val value: Long,
@@ -18,6 +26,18 @@ data class Amount(
         EUR("€"),
         GBP("£"),
         JPY("¥");
+
+        /**
+         * Get the appropriate locale for formatting this currency.
+         * This determines decimal separator conventions.
+         */
+        fun getLocale(): Locale = when (this) {
+            USD -> Locale.US          // Period decimal: $4.20
+            EUR -> Locale.GERMANY     // Comma decimal: €4,20
+            GBP -> Locale.UK          // Period decimal: £4.20
+            JPY -> Locale.JAPAN       // No decimals: ¥420
+            BTC -> Locale.US          // Comma thousand separator: ₿1,000
+        }
 
         companion object {
             @JvmStatic
@@ -34,19 +54,57 @@ data class Amount(
         }
     }
 
+    /**
+     * Format the amount as a string with the currency symbol.
+     * Uses currency-appropriate decimal separator:
+     * - USD: $4.20
+     * - EUR: €4,20
+     * - GBP: £4.20
+     * - JPY: ¥420
+     * - BTC: ₿1,000
+     */
     override fun toString(): String {
         return when (currency) {
             Currency.BTC -> {
-                val formatter = NumberFormat.getNumberInstance(Locale.US)
+                val formatter = NumberFormat.getNumberInstance(currency.getLocale())
                 "${currency.symbol}${formatter.format(value)}"
             }
             Currency.JPY -> {
+                // JPY has no decimal places (stored as cents internally, divide by 100)
                 val major = value / 100.0
-                String.format(Locale.US, "%s%.0f", currency.symbol, major)
+                val formatter = NumberFormat.getIntegerInstance(currency.getLocale())
+                "${currency.symbol}${formatter.format(major.toLong())}"
+            }
+            else -> {
+                // USD, EUR, GBP - 2 decimal places with currency-appropriate separator
+                val major = value / 100.0
+                val symbols = DecimalFormatSymbols(currency.getLocale())
+                val formatter = DecimalFormat("#,##0.00", symbols)
+                "${currency.symbol}${formatter.format(major)}"
+            }
+        }
+    }
+
+    /**
+     * Format the amount without the currency symbol.
+     * Useful for input fields and calculations.
+     */
+    fun toStringWithoutSymbol(): String {
+        return when (currency) {
+            Currency.BTC -> {
+                val formatter = NumberFormat.getNumberInstance(currency.getLocale())
+                formatter.format(value)
+            }
+            Currency.JPY -> {
+                val major = value / 100.0
+                val formatter = NumberFormat.getIntegerInstance(currency.getLocale())
+                formatter.format(major.toLong())
             }
             else -> {
                 val major = value / 100.0
-                String.format(Locale.US, "%s%.2f", currency.symbol, major)
+                val symbols = DecimalFormatSymbols(currency.getLocale())
+                val formatter = DecimalFormat("#,##0.00", symbols)
+                formatter.format(major)
             }
         }
     }
@@ -54,7 +112,8 @@ data class Amount(
     companion object {
         /**
          * Parse a formatted amount string back to an Amount.
-         * Handles formats like "$0.25", "€1.50", "₿24", "¥100", etc.
+         * Handles formats like "$0.25", "€1,50", "₿24", "¥100", etc.
+         * Accepts both period and comma as decimal separators for input flexibility.
          * Returns null if parsing fails.
          */
         @JvmStatic
@@ -65,19 +124,23 @@ data class Amount(
             val symbol = formatted.take(1)
             val currency = Currency.fromSymbol(symbol) ?: return null
             
-            // Extract the numeric part (remove symbol and any thousand separators)
-            val numericPart = formatted.drop(1).replace(",", "")
+            // Extract the numeric part (remove symbol)
+            var numericPart = formatted.drop(1).trim()
+            
+            // Normalize the input: handle both comma and period as decimal separators
+            // First, determine if comma is used as thousand separator or decimal separator
+            numericPart = normalizeNumericInput(numericPart)
             
             return try {
                 when (currency) {
                     Currency.BTC -> {
                         // For BTC, value is in satoshis (no decimal conversion needed)
-                        val sats = numericPart.toLong()
+                        val sats = numericPart.replace(",", "").toLong()
                         Amount(sats, currency)
                     }
                     Currency.JPY -> {
                         // JPY has no decimal places, but stored as cents internally
-                        val yen = numericPart.toDouble()
+                        val yen = numericPart.replace(",", "").toDouble()
                         Amount((yen * 100).toLong(), currency)
                     }
                     else -> {
@@ -89,6 +152,86 @@ data class Amount(
                 }
             } catch (e: NumberFormatException) {
                 null
+            }
+        }
+
+        /**
+         * Create an Amount from a raw value (fiat in cents/minor units, BTC in sats).
+         */
+        @JvmStatic
+        fun fromMinorUnits(minorUnits: Long, currency: Currency): Amount {
+            return Amount(minorUnits, currency)
+        }
+
+        /**
+         * Create an Amount from a major unit value (e.g., dollars not cents).
+         * For BTC, this is treated as satoshis.
+         */
+        @JvmStatic
+        fun fromMajorUnits(majorUnits: Double, currency: Currency): Amount {
+            return when (currency) {
+                Currency.BTC -> Amount(majorUnits.toLong(), currency)
+                else -> Amount(Math.round(majorUnits * 100), currency)
+            }
+        }
+
+        /**
+         * Normalize numeric input to use period as decimal separator.
+         * Handles inputs like "4,20" (European) or "4.20" (US) or "1,000.50" (US with thousands).
+         */
+        @JvmStatic
+        fun normalizeNumericInput(input: String): String {
+            var str = input.trim()
+            
+            // Count occurrences of period and comma
+            val periodCount = str.count { it == '.' }
+            val commaCount = str.count { it == ',' }
+            
+            return when {
+                // No separators - just return as is
+                periodCount == 0 && commaCount == 0 -> str
+                
+                // Only periods - could be decimal or thousand separators
+                // If single period, treat as decimal; if multiple, treat as thousands
+                periodCount > 0 && commaCount == 0 -> {
+                    if (periodCount == 1) {
+                        str // Single period = decimal separator
+                    } else {
+                        str.replace(".", "") // Multiple periods = thousand separators
+                    }
+                }
+                
+                // Only commas - could be decimal or thousand separators
+                // If single comma with 1-2 digits after, treat as decimal; otherwise thousands
+                commaCount > 0 && periodCount == 0 -> {
+                    if (commaCount == 1) {
+                        val parts = str.split(",")
+                        if (parts.size == 2 && parts[1].length <= 2) {
+                            // Single comma with 1-2 digits after = European decimal (e.g., "4,20")
+                            str.replace(",", ".")
+                        } else {
+                            // Otherwise treat as thousand separator (e.g., "1,000")
+                            str.replace(",", "")
+                        }
+                    } else {
+                        // Multiple commas = thousand separators
+                        str.replace(",", "")
+                    }
+                }
+                
+                // Both period and comma present - determine which is decimal
+                else -> {
+                    val lastPeriod = str.lastIndexOf('.')
+                    val lastComma = str.lastIndexOf(',')
+                    
+                    if (lastPeriod > lastComma) {
+                        // Period is last, so comma is thousand separator (US format: 1,000.50)
+                        str.replace(",", "")
+                    } else {
+                        // Comma is last, so period is thousand separator (EU format: 1.000,50)
+                        str.replace(".", "").replace(",", ".")
+                    }
+                }
             }
         }
     }

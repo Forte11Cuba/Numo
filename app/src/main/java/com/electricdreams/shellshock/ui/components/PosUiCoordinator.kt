@@ -108,6 +108,12 @@ class PosUiCoordinator(
         themeManager.applyTheme(amountDisplay, secondaryAmountDisplay, errorMessage, switchCurrencyButton, submitButton)
     }
 
+    /** Refresh the display when currency or other settings may have changed */
+    fun refreshDisplay() {
+        // Force a display update to reflect any currency changes
+        amountDisplayManager.updateDisplay(satoshiInput, fiatInput, AmountDisplayManager.AnimationType.NONE)
+    }
+
     /** Handle NFC payment */
     fun handleNfcPayment(tag: android.nfc.Tag) {
         nfcPaymentProcessor.handleNfcPayment(tag, amountDisplayManager.requestedAmount)

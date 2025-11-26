@@ -98,6 +98,21 @@
 
     </FrameLayout>
 
+    <!-- View Details button (text button, no outline) -->
+    <Button
+        android:id="@+id/view_details_button"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="8dp"
+        android:background="?attr/selectableItemBackground"
+        android:text="View Details"
+        android:textAllCaps="false"
+        android:textColor="@color/color_primary_green"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/close_button" />
+
     <!-- Close button at bottom (full width, grey background) -->
     <Button
         android:id="@+id/close_button"

@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.electricdreams.shellshock.R
 import com.electricdreams.shellshock.core.data.model.PaymentHistoryEntry
 import com.electricdreams.shellshock.core.model.Amount
+import com.electricdreams.shellshock.core.model.CheckoutBasket
 import com.electricdreams.shellshock.core.util.MintManager
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,6 +34,7 @@ class TransactionDetailActivity : AppCompatActivity() {
     private var position: Int = -1
     private var paymentType: String? = null
     private var lightningInvoice: String? = null
+    private var checkoutBasketJson: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +55,7 @@ class TransactionDetailActivity : AppCompatActivity() {
         position = intent.getIntExtra(EXTRA_TRANSACTION_POSITION, -1)
         paymentType = intent.getStringExtra(EXTRA_TRANSACTION_PAYMENT_TYPE)
         lightningInvoice = intent.getStringExtra(EXTRA_TRANSACTION_LIGHTNING_INVOICE)
+        checkoutBasketJson = intent.getStringExtra(EXTRA_CHECKOUT_BASKET_JSON)
 
         // Create entry object (normalize nullable unit fields via Kotlin defaults)
         entry = PaymentHistoryEntry(
@@ -104,16 +107,44 @@ class TransactionDetailActivity : AppCompatActivity() {
             }
         }
 
-        // Amount display
+        // Amount display - show primary and secondary amounts based on basket type
         val amountText: TextView = findViewById(R.id.detail_amount)
+        val amountSubtitleText: TextView = findViewById(R.id.detail_amount_subtitle)
         val amountValueText: TextView = findViewById(R.id.detail_amount_value)
 
-        val currency = Amount.Currency.fromCode(entry.getUnit())
-        val amount = Amount(entry.amount, currency)
-        val formattedAmount = amount.toString()
-
-        amountText.text = formattedAmount
-        amountValueText.text = formattedAmount
+        // Parse basket to determine display mode
+        val basket = CheckoutBasket.fromJson(checkoutBasketJson)
+        val showSatsAsPrimary = basket?.let { 
+            it.hasMixedPriceTypes() || it.getFiatItems().isEmpty() 
+        } ?: (entry.getEntryUnit() == "sat")
+        
+        val satAmount = Amount(entry.amount, Amount.Currency.BTC)
+        
+        if (showSatsAsPrimary) {
+            // Primary: Sats
+            amountText.text = satAmount.toString()
+            amountValueText.text = satAmount.toString()
+            
+            // Secondary: Fiat equivalent
+            if (entry.enteredAmount > 0 && entry.getEntryUnit() != "sat") {
+                val entryCurrency = Amount.Currency.fromCode(entry.getEntryUnit())
+                val fiatAmount = Amount(entry.enteredAmount, entryCurrency)
+                amountSubtitleText.text = "≈ $fiatAmount"
+                amountSubtitleText.visibility = View.VISIBLE
+            } else {
+                amountSubtitleText.visibility = View.GONE
+            }
+        } else {
+            // Primary: Fiat
+            val entryCurrency = Amount.Currency.fromCode(entry.getEntryUnit())
+            val fiatAmount = Amount(entry.enteredAmount, entryCurrency)
+            amountText.text = fiatAmount.toString()
+            amountValueText.text = fiatAmount.toString()
+            
+            // Secondary: Sats paid
+            amountSubtitleText.text = satAmount.toString()
+            amountSubtitleText.visibility = View.VISIBLE
+        }
 
         // Date
         val dateText: TextView = findViewById(R.id.detail_date)
@@ -254,10 +285,32 @@ class TransactionDetailActivity : AppCompatActivity() {
         val copyButton: Button = findViewById(R.id.btn_copy)
         val openWithButton: Button = findViewById(R.id.btn_open_with)
         val deleteButton: Button = findViewById(R.id.btn_delete)
+        val viewBasketButton: Button = findViewById(R.id.btn_view_basket)
 
         copyButton.setOnClickListener { copyToken() }
         openWithButton.setOnClickListener { openWithApp() }
         deleteButton.setOnClickListener { showDeleteConfirmation() }
+
+        // Always show View Receipt button - works with or without basket
+        viewBasketButton.visibility = View.VISIBLE
+        viewBasketButton.setOnClickListener { openBasketReceipt() }
+    }
+
+    private fun openBasketReceipt() {
+        val intent = Intent(this, BasketReceiptActivity::class.java).apply {
+            putExtra(BasketReceiptActivity.EXTRA_CHECKOUT_BASKET_JSON, checkoutBasketJson)
+            putExtra(BasketReceiptActivity.EXTRA_PAYMENT_TYPE, paymentType)
+            putExtra(BasketReceiptActivity.EXTRA_PAYMENT_DATE, entry.date.time)
+            putExtra(BasketReceiptActivity.EXTRA_TRANSACTION_ID, entry.token.takeIf { it.isNotEmpty() }?.take(32))
+            putExtra(BasketReceiptActivity.EXTRA_MINT_URL, entry.mintUrl)
+            entry.bitcoinPrice?.let { putExtra(BasketReceiptActivity.EXTRA_BITCOIN_PRICE, it) }
+            
+            // For non-basket transactions, pass the payment amount info
+            putExtra(BasketReceiptActivity.EXTRA_TOTAL_SATOSHIS, entry.amount)
+            putExtra(BasketReceiptActivity.EXTRA_ENTERED_AMOUNT, entry.enteredAmount)
+            putExtra(BasketReceiptActivity.EXTRA_ENTERED_CURRENCY, entry.getEntryUnit())
+        }
+        startActivity(intent)
     }
 
     private fun copyToken() {
@@ -356,5 +409,6 @@ class TransactionDetailActivity : AppCompatActivity() {
         const val EXTRA_TRANSACTION_POSITION = "transaction_position"
         const val EXTRA_TRANSACTION_PAYMENT_TYPE = "transaction_payment_type"
         const val EXTRA_TRANSACTION_LIGHTNING_INVOICE = "transaction_lightning_invoice"
+        const val EXTRA_CHECKOUT_BASKET_JSON = "checkout_basket_json"
     }
 }

@@ -139,6 +139,17 @@
                 android:value=".feature.history.PaymentsHistoryActivity" />
         </activity>
         
+        <activity android:name="com.electricdreams.shellshock.feature.history.BasketReceiptActivity"
+            android:exported="false"
+            android:label="Receipt"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.history.TransactionDetailActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.history.TransactionDetailActivity" />
+        </activity>
+        
         <activity android:name="com.electricdreams.shellshock.feature.settings.SettingsActivity"
             android:exported="false"
             android:label="Settings"
@@ -183,16 +194,7 @@
                 android:value=".feature.settings.SettingsActivity" />
         </activity>
         
-        <activity android:name="com.electricdreams.shellshock.feature.settings.ItemsSettingsActivity"
-            android:exported="false"
-            android:label="Items"
-            android:theme="@style/Theme.Shellshock"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:parentActivityName=".feature.settings.SettingsActivity">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".feature.settings.SettingsActivity" />
-        </activity>
+
         
         <activity android:name="com.electricdreams.shellshock.feature.settings.SecuritySettingsActivity"
             android:exported="false"
@@ -267,26 +269,38 @@
             android:label="Add Item"
             android:theme="@style/Theme.Shellshock"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
             android:parentActivityName=".feature.items.ItemListActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".feature.items.ItemListActivity" />
         </activity>
         
-        <activity android:name="com.electricdreams.shellshock.feature.items.ItemListActivity"
+        <activity android:name="com.electricdreams.shellshock.feature.items.BarcodeScannerActivity"
             android:exported="false"
-            android:label="Items Catalog"
-            android:theme="@style/Theme.Shellshock"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:parentActivityName=".feature.settings.ItemsSettingsActivity">
+            android:label="Scan Barcode"
+            android:theme="@style/Theme.Shellshock.Fullscreen"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".feature.items.ItemEntryActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".feature.settings.ItemsSettingsActivity" />
+                android:value=".feature.items.ItemEntryActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.items.ItemListActivity"
+            android:exported="false"
+            android:label="Items"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:parentActivityName=".feature.settings.SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.settings.SettingsActivity" />
         </activity>
         
         <activity android:name="com.electricdreams.shellshock.feature.items.ItemSelectionActivity"
             android:exported="false"
-            android:label="Select Items"
+            android:label="Checkout"
             android:theme="@style/Theme.Shellshock"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:parentActivityName=".ModernPOSActivity">
@@ -295,11 +309,11 @@
                 android:value=".ModernPOSActivity" />
         </activity>
         
-        <activity android:name="com.electricdreams.shellshock.feature.items.BasketActivity"
+        <activity android:name="com.electricdreams.shellshock.feature.items.CheckoutScannerActivity"
             android:exported="false"
-            android:label="Basket"
-            android:theme="@style/Theme.Shellshock"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:label="Scan Items"
+            android:theme="@style/Theme.Shellshock.Fullscreen"
+            android:screenOrientation="portrait"
             android:parentActivityName=".feature.items.ItemSelectionActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"

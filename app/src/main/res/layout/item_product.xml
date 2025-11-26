@@ -1,135 +1,183 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/color_bg_white"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="12dp">
+    android:orientation="vertical"
+    android:background="@color/color_bg_white">
 
-    <!-- Icon/Image -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/image_container"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="0dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:id="@+id/item_image"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/color_bg_secondary"
-            android:contentDescription="Item image"
-            android:scaleType="centerCrop" />
-
-        <ImageView
-            android:id="@+id/item_image_placeholder"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_gravity="center"
-            android:contentDescription="No image"
-            android:src="@android:drawable/ic_menu_camera"
-            app:tint="@color/color_icon_secondary" />
-    </androidx.cardview.widget.CardView>
-
-    <!-- Text Content -->
-    <LinearLayout
-        android:layout_width="0dp"
+    <!-- Main Content Row -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="@id/image_container"
-        app:layout_constraintEnd_toStartOf="@+id/item_price"
-        app:layout_constraintStart_toEndOf="@+id/image_container"
-        app:layout_constraintTop_toTopOf="@id/image_container">
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="14dp"
+        android:background="?attr/selectableItemBackground">
 
-        <TextView
-            android:id="@+id/item_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/Text.BodyBold"
-            tools:text="T-Shirt" />
+        <!-- Item Image - Apple-style rounded square -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/image_container"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/color_bg_secondary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
 
-        <TextView
-            android:id="@+id/item_variation"
-            android:layout_width="match_parent"
+            <ImageView
+                android:id="@+id/item_image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Item image"
+                android:scaleType="centerCrop" />
+
+            <ImageView
+                android:id="@+id/item_image_placeholder"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:contentDescription="No image"
+                android:src="@drawable/ic_image_placeholder"
+                app:tint="@color/color_icon_tertiary" />
+        </androidx.cardview.widget.CardView>
+
+        <!-- Text Content -->
+        <LinearLayout
+            android:id="@+id/text_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/Text.Caption"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="12dp"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/right_content"
+            app:layout_constraintStart_toEndOf="@id/image_container"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <!-- Item Name -->
+            <TextView
+                android:id="@+id/item_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/color_text_primary"
+                android:textSize="17sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="-0.01"
+                tools:text="Classic T-Shirt" />
+
+            <!-- Item Variation (grey, smaller) -->
+            <TextView
+                android:id="@+id/item_variation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/color_text_tertiary"
+                android:textSize="15sp"
+                android:visibility="gone"
+                tools:text="Medium / Navy Blue"
+                tools:visibility="visible" />
+
+            <!-- Stock indicator (if tracking inventory) -->
+            <TextView
+                android:id="@+id/item_quantity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/color_text_tertiary"
+                android:textSize="13sp"
+                android:visibility="gone"
+                tools:text="12 in stock"
+                tools:visibility="visible" />
+
+            <!-- Hidden fields for compatibility -->
+            <TextView
+                android:id="@+id/item_description"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/item_sku"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Right Side Content -->
+        <LinearLayout
+            android:id="@+id/right_content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <!-- Price -->
+            <TextView
+                android:id="@+id/item_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/color_text_secondary"
+                android:textSize="15sp"
+                tools:text="$24.99" />
+
+            <!-- Disclosure Chevron -->
+            <ImageView
+                android:id="@+id/chevron"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_chevron_forward"
+                app:tint="@color/color_icon_tertiary"
+                android:contentDescription="More" />
+        </LinearLayout>
+
+        <!-- Hidden action buttons (for compatibility) -->
+        <LinearLayout
+            android:id="@+id/actions_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:visibility="gone"
-            tools:text="Small"
-            tools:visibility="visible" />
-            
-        <!-- Hidden but kept for compatibility if needed, or remove if unused -->
-        <TextView
-            android:id="@+id/item_description"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-            
-        <TextView
-            android:id="@+id/item_sku"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-            
-        <TextView
-            android:id="@+id/item_quantity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
-    </LinearLayout>
+            <ImageButton
+                android:id="@+id/edit_item_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_edit"
+                android:visibility="gone" />
 
-    <!-- Right Side: Price or Action -->
-    <TextView
-        android:id="@+id/item_price"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textAppearance="@style/Text.BodyBold"
-        app:layout_constraintBottom_toBottomOf="@id/image_container"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/image_container"
-        tools:text="$24.99" />
+            <ImageButton
+                android:id="@+id/delete_item_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_delete"
+                android:visibility="gone" />
+        </LinearLayout>
 
-    <!-- Edit/Delete Actions (Hidden by default, maybe show on long press or separate edit mode) -->
-    <!-- For now, we'll keep them hidden or move them to a bottom sheet on click -->
-    <LinearLayout
-        android:id="@+id/actions_layout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/item_price">
-        
-        <ImageButton
-            android:id="@+id/edit_item_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_edit" />
-            
-        <ImageButton
-            android:id="@+id/delete_item_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_delete" />
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Divider -->
+    <View
+        android:id="@+id/divider"
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_marginStart="100dp"
+        android:background="@color/color_divider" />
+
+</LinearLayout>

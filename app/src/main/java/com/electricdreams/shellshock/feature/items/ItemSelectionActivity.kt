@@ -1,267 +1,224 @@
 package com.electricdreams.shellshock.feature.items
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
+import androidx.cardview.widget.CardView
+import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.electricdreams.shellshock.ModernPOSActivity
 import com.electricdreams.shellshock.R
-import com.electricdreams.shellshock.core.model.BasketItem
-import com.electricdreams.shellshock.core.model.Item
 import com.electricdreams.shellshock.core.util.BasketManager
 import com.electricdreams.shellshock.core.util.CurrencyManager
 import com.electricdreams.shellshock.core.util.ItemManager
 import com.electricdreams.shellshock.core.worker.BitcoinPriceWorker
-import java.io.File
+import com.electricdreams.shellshock.feature.items.adapters.SelectionBasketAdapter
+import com.electricdreams.shellshock.feature.items.adapters.SelectionItemsAdapter
+import com.electricdreams.shellshock.feature.items.handlers.BasketUIHandler
+import com.electricdreams.shellshock.feature.items.handlers.CheckoutHandler
+import com.electricdreams.shellshock.feature.items.handlers.ItemSearchHandler
+import com.electricdreams.shellshock.feature.items.handlers.SelectionAnimationHandler
 
+/**
+ * Activity for selecting items and adding them to a basket for checkout.
+ * Supports search, quantity adjustments, custom variations, and checkout flow.
+ */
 class ItemSelectionActivity : AppCompatActivity() {
 
+    // ----- Managers -----
     private lateinit var itemManager: ItemManager
     private lateinit var basketManager: BasketManager
     private lateinit var bitcoinPriceWorker: BitcoinPriceWorker
+    private lateinit var currencyManager: CurrencyManager
 
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var emptyView: TextView
-    private lateinit var basketCountView: TextView
+    // ----- Views -----
+    private lateinit var mainScrollView: NestedScrollView
+    private lateinit var searchInput: EditText
+    private lateinit var scanButton: ImageButton
+    private lateinit var basketSection: LinearLayout
+    private lateinit var basketRecyclerView: RecyclerView
     private lateinit var basketTotalView: TextView
-    private lateinit var viewBasketButton: android.widget.Button
-    private lateinit var checkoutButton: android.widget.Button
+    private lateinit var clearBasketButton: TextView
+    private lateinit var itemsRecyclerView: RecyclerView
+    private lateinit var emptyView: LinearLayout
+    private lateinit var noResultsView: LinearLayout
+    private lateinit var checkoutContainer: CardView
+    private lateinit var checkoutButton: Button
 
-    private lateinit var adapter: ItemAdapter
+    // ----- Adapters -----
+    private lateinit var itemsAdapter: SelectionItemsAdapter
+    private lateinit var basketAdapter: SelectionBasketAdapter
+
+    // ----- Handlers -----
+    private lateinit var animationHandler: SelectionAnimationHandler
+    private lateinit var basketUIHandler: BasketUIHandler
+    private lateinit var searchHandler: ItemSearchHandler
+    private lateinit var checkoutHandler: CheckoutHandler
+
+    // ----- Activity Result Launchers -----
+    private val scannerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == CheckoutScannerActivity.RESULT_BASKET_UPDATED) {
+            refreshBasket()
+            itemsAdapter.notifyDataSetChanged()
+        }
+    }
+
+    // ----- Lifecycle -----
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_item_selection)
 
-        findViewById<View?>(R.id.back_button)?.setOnClickListener { finish() }
+        initializeManagers()
+        initializeViews()
+        initializeHandlers()
+        initializeAdapters()
+        setupRecyclerViews()
+        setupClickListeners()
 
-        findViewById<Toolbar?>(R.id.toolbar)?.let { toolbar ->
-            setSupportActionBar(toolbar)
-            supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        }
+        // Load initial data
+        searchHandler.loadItems()
+        refreshBasket()
 
-        itemManager = ItemManager.getInstance(this)
-        basketManager = BasketManager.getInstance()
-        bitcoinPriceWorker = BitcoinPriceWorker.getInstance(this)
-
-        recyclerView = findViewById(R.id.items_recycler_view)
-        emptyView = findViewById(R.id.empty_view)
-        basketCountView = findViewById(R.id.basket_count)
-        basketTotalView = findViewById(R.id.basket_total)
-        viewBasketButton = findViewById(R.id.view_basket_button)
-        checkoutButton = findViewById(R.id.checkout_button)
-
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = ItemAdapter(itemManager.getAllItems())
-        recyclerView.adapter = adapter
-
-        updateEmptyViewVisibility()
-
-        viewBasketButton.setOnClickListener {
-            startActivity(Intent(this, BasketActivity::class.java))
-        }
-
-        checkoutButton.setOnClickListener { proceedToCheckout() }
-
-        updateBasketSummary()
         bitcoinPriceWorker.start()
     }
 
     override fun onResume() {
         super.onResume()
-        updateBasketSummary()
+        // Refresh in case items were modified
+        searchHandler.loadItems()
+        refreshBasket()
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == android.R.id.home) {
-            finish()
-            return true
-        }
-        return super.onOptionsItemSelected(item)
+    // ----- Initialization -----
+
+    private fun initializeManagers() {
+        itemManager = ItemManager.getInstance(this)
+        basketManager = BasketManager.getInstance()
+        bitcoinPriceWorker = BitcoinPriceWorker.getInstance(this)
+        currencyManager = CurrencyManager.getInstance(this)
     }
 
-    private fun updateEmptyViewVisibility() {
-        if (adapter.itemCount == 0) {
-            emptyView.visibility = View.VISIBLE
-            recyclerView.visibility = View.GONE
-        } else {
-            emptyView.visibility = View.GONE
-            recyclerView.visibility = View.VISIBLE
+    private fun initializeViews() {
+        findViewById<View>(R.id.back_button).setOnClickListener { finish() }
+
+        mainScrollView = findViewById(R.id.main_scroll_view)
+        searchInput = findViewById(R.id.search_input)
+        scanButton = findViewById(R.id.scan_button)
+        basketSection = findViewById(R.id.basket_section)
+        basketRecyclerView = findViewById(R.id.basket_recycler_view)
+        basketTotalView = findViewById(R.id.basket_total)
+        clearBasketButton = findViewById(R.id.clear_basket_button)
+        itemsRecyclerView = findViewById(R.id.items_recycler_view)
+        emptyView = findViewById(R.id.empty_view)
+        noResultsView = findViewById(R.id.no_results_view)
+        checkoutContainer = findViewById(R.id.checkout_container)
+        checkoutButton = findViewById(R.id.checkout_button)
+    }
+
+    private fun initializeHandlers() {
+        animationHandler = SelectionAnimationHandler(
+            basketSection = basketSection,
+            checkoutContainer = checkoutContainer
+        )
+
+        basketUIHandler = BasketUIHandler(
+            basketManager = basketManager,
+            currencyManager = currencyManager,
+            basketTotalView = basketTotalView,
+            checkoutButton = checkoutButton,
+            animationHandler = animationHandler,
+            onBasketUpdated = { basketAdapter.updateItems(basketManager.getBasketItems()) }
+        )
+
+        searchHandler = ItemSearchHandler(
+            itemManager = itemManager,
+            searchInput = searchInput,
+            itemsRecyclerView = itemsRecyclerView,
+            emptyView = emptyView,
+            noResultsView = noResultsView,
+            onItemsFiltered = { items -> itemsAdapter.updateItems(items) }
+        )
+
+        checkoutHandler = CheckoutHandler(
+            activity = this,
+            basketManager = basketManager,
+            currencyManager = currencyManager,
+            bitcoinPriceWorker = bitcoinPriceWorker
+        )
+    }
+
+    private fun initializeAdapters() {
+        itemsAdapter = SelectionItemsAdapter(
+            context = this,
+            basketManager = basketManager,
+            mainScrollView = mainScrollView,
+            onQuantityChanged = { refreshBasket() },
+            onQuantityAnimation = { quantityView -> animationHandler.animateQuantityChange(quantityView) }
+        )
+
+        basketAdapter = SelectionBasketAdapter(
+            currencyManager = currencyManager,
+            onItemRemoved = { itemId -> handleItemRemoved(itemId) }
+        )
+    }
+
+    private fun setupRecyclerViews() {
+        itemsRecyclerView.layoutManager = LinearLayoutManager(this)
+        itemsRecyclerView.adapter = itemsAdapter
+
+        basketRecyclerView.layoutManager = LinearLayoutManager(this)
+        basketRecyclerView.adapter = basketAdapter
+    }
+
+    private fun setupClickListeners() {
+        scanButton.setOnClickListener {
+            val intent = Intent(this, CheckoutScannerActivity::class.java)
+            scannerLauncher.launch(intent)
+        }
+
+        clearBasketButton.setOnClickListener {
+            showClearBasketDialog()
+        }
+
+        checkoutButton.setOnClickListener {
+            checkoutHandler.proceedToCheckout()
         }
     }
 
-    private fun updateBasketSummary() {
-        val itemCount = basketManager.getTotalItemCount()
-        val totalPrice = basketManager.getTotalPrice()
+    // ----- Actions -----
 
-        basketCountView.text = itemCount.toString()
-
-        val formattedTotal = if (itemCount > 0) {
-            val currencySymbol = CurrencyManager.getInstance(this).getCurrentSymbol()
-            checkoutButton.isEnabled = true
-            String.format("%s%.2f", currencySymbol, totalPrice)
-        } else {
-            checkoutButton.isEnabled = false
-            "0.00"
-        }
-
-        basketTotalView.text = formattedTotal
+    private fun refreshBasket() {
+        basketUIHandler.refreshBasket()
     }
 
-    private fun proceedToCheckout() {
-        if (basketManager.getTotalItemCount() == 0) {
-            Toast.makeText(this, "Your basket is empty", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val satoshisAmount = basketManager.getTotalSatoshis(bitcoinPriceWorker.getCurrentPrice())
-        val intent = Intent(this, ModernPOSActivity::class.java).apply {
-            putExtra("EXTRA_PAYMENT_AMOUNT", satoshisAmount)
-        }
-
-        basketManager.clearBasket()
-        startActivity(intent)
+    private fun handleItemRemoved(itemId: String) {
+        basketManager.removeItem(itemId)
+        itemsAdapter.resetItemQuantity(itemId)
+        refreshBasket()
     }
 
-    private inner class ItemAdapter(private var items: List<Item>) :
-        RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
-
-        private val basketQuantities: MutableMap<String, Int> = mutableMapOf()
-
-        init {
-            for (basketItem in basketManager.getBasketItems()) {
-                basketQuantities[basketItem.item.id!!] = basketItem.quantity
+    private fun showClearBasketDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Clear Basket")
+            .setMessage("Remove all items from basket?")
+            .setPositiveButton("Clear") { _, _ ->
+                basketManager.clearBasket()
+                itemsAdapter.clearAllQuantities()
+                refreshBasket()
             }
-        }
-
-        fun updateItems(newItems: List<Item>) {
-            items = newItems
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_product_selection, parent, false)
-            return ItemViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
-            val item = items[position]
-            val quantity = basketQuantities[item.id] ?: 0
-            holder.bind(item, quantity)
-        }
-
-        override fun getItemCount(): Int = items.size
-
-        inner class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            private val nameView: TextView = itemView.findViewById(R.id.item_name)
-            private val variationView: TextView = itemView.findViewById(R.id.item_variation)
-            private val descriptionView: TextView = itemView.findViewById(R.id.item_description)
-            private val skuView: TextView = itemView.findViewById(R.id.item_sku)
-            private val priceView: TextView = itemView.findViewById(R.id.item_price)
-            private val quantityView: TextView = itemView.findViewById(R.id.item_quantity)
-            private val decreaseButton: ImageButton = itemView.findViewById(R.id.decrease_quantity_button)
-            private val basketQuantityView: TextView = itemView.findViewById(R.id.basket_quantity)
-            private val increaseButton: ImageButton = itemView.findViewById(R.id.increase_quantity_button)
-            private val itemImageView: ImageView = itemView.findViewById(R.id.item_image)
-
-            fun bind(item: Item, basketQuantity: Int) {
-                nameView.text = item.name
-
-                if (!item.variationName.isNullOrEmpty()) {
-                    variationView.visibility = View.VISIBLE
-                    variationView.text = item.variationName
-                } else {
-                    variationView.visibility = View.GONE
-                }
-
-                if (!item.description.isNullOrEmpty()) {
-                    descriptionView.visibility = View.VISIBLE
-                    descriptionView.text = item.description
-                } else {
-                    descriptionView.visibility = View.GONE
-                }
-
-                if (!item.sku.isNullOrEmpty()) {
-                    skuView.text = "SKU: ${item.sku}"
-                } else {
-                    skuView.text = ""
-                }
-
-                val currencySymbol = CurrencyManager.getInstance(itemView.context).getCurrentSymbol()
-                priceView.text = String.format("%s%.2f", currencySymbol, item.price)
-
-                quantityView.text = "In stock: ${item.quantity}"
-
-                basketQuantityView.text = basketQuantity.toString()
-
-                if (!item.imagePath.isNullOrEmpty()) {
-                    val imageFile = File(item.imagePath!!)
-                    if (imageFile.exists()) {
-                        val bitmap: Bitmap? = BitmapFactory.decodeFile(imageFile.absolutePath)
-                        if (bitmap != null) {
-                            itemImageView.setImageBitmap(bitmap)
-                        } else {
-                            itemImageView.setImageResource(R.drawable.ic_image_placeholder)
-                        }
-                    } else {
-                        itemImageView.setImageResource(R.drawable.ic_image_placeholder)
-                    }
-                } else {
-                    itemImageView.setImageResource(R.drawable.ic_image_placeholder)
-                }
-
-                decreaseButton.isEnabled = basketQuantity > 0
-
-                val hasStock = item.quantity > basketQuantity || item.quantity == 0
-                increaseButton.isEnabled = hasStock
-
-                decreaseButton.setOnClickListener {
-                    if (basketQuantity > 0) {
-                        updateBasketItem(item, basketQuantity - 1)
-                    }
-                }
-
-                increaseButton.setOnClickListener {
-                    if (hasStock) {
-                        updateBasketItem(item, basketQuantity + 1)
-                    } else {
-                        Toast.makeText(
-                            itemView.context,
-                            "No more stock available",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
-            }
-
-            private fun updateBasketItem(item: Item, newQuantity: Int) {
-                if (newQuantity <= 0) {
-                    basketManager.removeItem(item.id!!)
-                    basketQuantities.remove(item.id!!)
-                } else {
-                    val updated = basketManager.updateItemQuantity(item.id!!, newQuantity)
-                    if (!updated) {
-                        basketManager.addItem(item, newQuantity)
-                    }
-                    basketQuantities[item.id!!] = newQuantity
-                }
-
-                notifyItemChanged(adapterPosition)
-                updateBasketSummary()
-            }
-        }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }

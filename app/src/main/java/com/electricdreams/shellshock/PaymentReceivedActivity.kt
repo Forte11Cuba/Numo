@@ -15,6 +15,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import com.cashujdk.nut00.Token
+import com.electricdreams.shellshock.feature.history.PaymentsHistoryActivity
+import com.electricdreams.shellshock.feature.history.TransactionDetailActivity
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -34,6 +36,7 @@ class PaymentReceivedActivity : AppCompatActivity() {
     private lateinit var checkmarkCircle: ImageView
     private lateinit var checkmarkIcon: ImageView
     private lateinit var closeButton: Button
+    private lateinit var viewDetailsButton: Button
     private lateinit var shareIconButton: ImageButton
     private lateinit var closeIconButton: ImageButton
     
@@ -67,6 +70,7 @@ class PaymentReceivedActivity : AppCompatActivity() {
         checkmarkCircle = findViewById(R.id.checkmark_circle)
         checkmarkIcon = findViewById(R.id.checkmark_icon)
         closeButton = findViewById(R.id.close_button)
+        viewDetailsButton = findViewById(R.id.view_details_button)
         shareIconButton = findViewById(R.id.share_icon_button)
         closeIconButton = findViewById(R.id.close_icon_button)
         
@@ -85,6 +89,10 @@ class PaymentReceivedActivity : AppCompatActivity() {
         // Set up button listeners
         closeButton.setOnClickListener {
             finish()
+        }
+        
+        viewDetailsButton.setOnClickListener {
+            openTransactionDetails()
         }
         
         shareIconButton.setOnClickListener {
@@ -217,5 +225,36 @@ class PaymentReceivedActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "No apps available to share this token", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun openTransactionDetails() {
+        // Get the most recent payment from history (the one we just received)
+        val history = PaymentsHistoryActivity.getPaymentHistory(this)
+        val entry = history.lastOrNull()
+        
+        if (entry == null) {
+            Toast.makeText(this, "Transaction details not available", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val intent = Intent(this, TransactionDetailActivity::class.java).apply {
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_TOKEN, entry.token)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_AMOUNT, entry.amount)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_DATE, entry.date.time)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_UNIT, entry.getUnit())
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_ENTRY_UNIT, entry.getEntryUnit())
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_ENTERED_AMOUNT, entry.enteredAmount)
+            entry.bitcoinPrice?.let {
+                putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_BITCOIN_PRICE, it)
+            }
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_MINT_URL, entry.mintUrl)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_PAYMENT_REQUEST, entry.paymentRequest)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_POSITION, history.size - 1)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_PAYMENT_TYPE, entry.paymentType)
+            putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_LIGHTNING_INVOICE, entry.lightningInvoice)
+            putExtra(TransactionDetailActivity.EXTRA_CHECKOUT_BASKET_JSON, entry.checkoutBasketJson)
+        }
+        
+        startActivity(intent)
     }
 }

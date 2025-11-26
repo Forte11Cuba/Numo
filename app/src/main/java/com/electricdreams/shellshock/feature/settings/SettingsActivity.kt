@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.electricdreams.shellshock.R
+import com.electricdreams.shellshock.feature.items.ItemListActivity
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -26,8 +27,9 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, MintsSettingsActivity::class.java))
         }
 
+        // Go directly to item list (merged with item settings)
         findViewById<View>(R.id.items_settings_item).setOnClickListener {
-            startActivity(Intent(this, ItemsSettingsActivity::class.java))
+            startActivity(Intent(this, ItemListActivity::class.java))
         }
 
         findViewById<View>(R.id.security_settings_item).setOnClickListener {

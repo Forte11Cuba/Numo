@@ -111,6 +111,9 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         // Reapply theme when returning from settings
         uiCoordinator.applyTheme()
         
+        // Refresh display to update currency formatting when returning from settings
+        uiCoordinator.refreshDisplay()
+        
         nfcAdapter?.let { adapter ->
             val pendingIntent = PendingIntent.getActivity(
                 this, 0, Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_MUTABLE,
