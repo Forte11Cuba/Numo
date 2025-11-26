@@ -259,9 +259,10 @@ class ItemSelectionActivity : AppCompatActivity() {
             when {
                 fiatTotal > 0 && satsTotal > 0 -> {
                     val fiatAmount = Amount.fromMajorUnits(fiatTotal, currency)
-                    "$fiatAmount + $satsTotal sats"
+                    val satsAmount = Amount(satsTotal, Amount.Currency.BTC)
+                    "$fiatAmount + $satsAmount"
                 }
-                satsTotal > 0 -> "$satsTotal sats"
+                satsTotal > 0 -> Amount(satsTotal, Amount.Currency.BTC).toString()
                 else -> Amount.fromMajorUnits(fiatTotal, currency).toString()
             }
         } else {
@@ -280,9 +281,13 @@ class ItemSelectionActivity : AppCompatActivity() {
         val buttonText = when {
             fiatTotal > 0 && satsTotal > 0 -> {
                 val fiatAmount = Amount.fromMajorUnits(fiatTotal, currency)
-                "Charge $fiatAmount + $satsTotal sats"
+                val satsAmount = Amount(satsTotal, Amount.Currency.BTC)
+                "Charge $fiatAmount + $satsAmount"
             }
-            satsTotal > 0 -> "Charge $satsTotal sats"
+            satsTotal > 0 -> {
+                val satsAmount = Amount(satsTotal, Amount.Currency.BTC)
+                "Charge $satsAmount"
+            }
             else -> {
                 val fiatAmount = Amount.fromMajorUnits(fiatTotal, currency)
                 "Charge $fiatAmount"
@@ -562,14 +567,13 @@ class ItemSelectionActivity : AppCompatActivity() {
                     variationView.visibility = View.GONE
                 }
 
-                // Format total
-                if (basketItem.isSatsPrice()) {
-                    totalView.text = "${basketItem.getTotalSats()} sats"
+                // Format total using unified Amount class
+                totalView.text = if (basketItem.isSatsPrice()) {
+                    Amount(basketItem.getTotalSats(), Amount.Currency.BTC).toString()
                 } else {
                     val currencyCode = currencyManager.getCurrentCurrency()
                     val currency = Amount.Currency.fromCode(currencyCode)
-                    val totalAmount = Amount.fromMajorUnits(basketItem.getTotalPrice(), currency)
-                    totalView.text = totalAmount.toString()
+                    Amount.fromMajorUnits(basketItem.getTotalPrice(), currency).toString()
                 }
 
                 removeButton.setOnClickListener {

@@ -52,11 +52,11 @@ data class Item(
      * - USD, GBP: period decimal (e.g., $4.20, £4.20)
      * - EUR: comma decimal (e.g., €4,20)
      * - JPY: no decimals (e.g., ¥420)
-     * - SATS: shows as "X sats"
+     * - BTC: comma thousand separator (e.g., ₿1,000)
      */
     fun getFormattedPrice(currencySymbol: String = "$"): String {
         return when (priceType) {
-            PriceType.SATS -> "$priceSats sats"
+            PriceType.SATS -> Amount(priceSats, Amount.Currency.BTC).toString()
             PriceType.FIAT -> {
                 // Convert price (in major units like dollars) to minor units (cents)
                 val minorUnits = Math.round(price * 100)
