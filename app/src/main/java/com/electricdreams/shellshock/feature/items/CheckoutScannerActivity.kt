@@ -80,7 +80,7 @@ class CheckoutScannerActivity : AppCompatActivity() {
         private const val TAG = "CheckoutScanner"
         private const val REQUEST_CAMERA_PERMISSION = 1001
         const val RESULT_BASKET_UPDATED = 1002
-        private const val SAME_BARCODE_COOLDOWN_MS = 1000L // 1 second cooldown for same barcode
+        private const val SAME_BARCODE_COOLDOWN_MS = 2000L // 2 second cooldown for same barcode
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -308,13 +308,13 @@ class CheckoutScannerActivity : AppCompatActivity() {
         val currentTime = System.currentTimeMillis()
         
         // Check if this is the same barcode and we're within cooldown period
+        if (gtin == lastScannedGtin && currentTime - lastScanTime < SAME_BARCODE_COOLDOWN_MS) {
+            // Still in cooldown period, ignore this scan (no vibration)
+            return
+        }
+        
+        // Check if this is the same barcode after cooldown has passed
         if (gtin == lastScannedGtin) {
-            // Same barcode - check if cooldown has passed
-            if (currentTime - lastScanTime < SAME_BARCODE_COOLDOWN_MS) {
-                // Still in cooldown period, ignore this scan
-                return
-            }
-            
             // Cooldown passed - increment quantity
             if (currentItem != null) {
                 lastScanTime = currentTime
@@ -330,7 +330,7 @@ class CheckoutScannerActivity : AppCompatActivity() {
                         currentQuantity++
                         updateQuantityDisplay()
                         updateBasketForCurrentItem()
-                        // Haptic feedback
+                        // Haptic feedback for successful quantity increment
                         previewView.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                     }
                 }
@@ -341,9 +341,7 @@ class CheckoutScannerActivity : AppCompatActivity() {
         // Different barcode - find item by Gtin
         val item = itemManager.findItemByGtin(gtin)
         if (item == null) {
-            runOnUiThread {
-                previewView.performHapticFeedback(android.view.HapticFeedbackConstants.REJECT)
-            }
+            // No haptic feedback for unknown items during cooldown
             return
         }
 
@@ -358,6 +356,7 @@ class CheckoutScannerActivity : AppCompatActivity() {
         runOnUiThread {
             showItemOverlay(item)
             updateBasketForCurrentItem()
+            // Haptic feedback ONLY for successful scans (not during cooldown)
             previewView.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
         }
     }
