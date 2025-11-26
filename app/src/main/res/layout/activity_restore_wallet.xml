@@ -14,22 +14,23 @@
         android:paddingHorizontal="16dp"
         app:layout_constraintTop_toTopOf="parent">
 
-        <ImageButton
+        <ImageView
             android:id="@+id/back_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:padding="12dp"
+            android:minWidth="44dp"
+            android:minHeight="44dp"
+            android:padding="10dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back"
             android:src="@drawable/ic_chevron_back"
-            android:tint="@color/color_text_primary"
+            app:tint="@color/color_text_primary"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
+            android:id="@+id/title_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Restore Wallet"
@@ -41,280 +42,327 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <ScrollView
-        android:id="@+id/scroll_view"
+    <!-- ============================================ -->
+    <!-- STEP 1: Seed Entry Container                -->
+    <!-- ============================================ -->
+    <LinearLayout
+        android:id="@+id/seed_entry_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/bottom_container"
-        app:layout_constraintTop_toBottomOf="@id/top_bar">
+        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
 
-            <!-- Warning Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp"
-                android:background="@drawable/bg_warning_card">
+                android:padding="24dp">
 
+                <!-- Warning Card -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:background="@drawable/bg_warning_card">
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginEnd="12dp"
-                        android:src="@drawable/ic_warning"
-                        app:tint="#FF4B4B" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_marginEnd="12dp"
+                            android:src="@drawable/ic_warning"
+                            app:tint="#FF4B4B" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Important Warning"
+                            android:textSize="16sp"
+                            android:textColor="#111111"
+                            android:fontFamily="sans-serif-medium" />
+                    </LinearLayout>
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Important Warning"
-                        android:textSize="16sp"
-                        android:textColor="#111111"
-                        android:fontFamily="sans-serif-medium" />
+                        android:layout_marginTop="8dp"
+                        android:text="Restoring from a seed phrase will replace your current wallet. Make sure you have backed up your current seed phrase before proceeding."
+                        android:textSize="14sp"
+                        android:textColor="#6F6F73"
+                        android:lineSpacingMultiplier="1.3" />
+
                 </LinearLayout>
 
+                <!-- Seed Input Title -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Restoring from a seed phrase will replace your current wallet. Make sure you have backed up your current seed phrase before proceeding, or you may lose access to any existing funds."
-                    android:textSize="14sp"
-                    android:textColor="#6F6F73"
-                    android:lineSpacingMultiplier="1.3" />
+                    android:layout_marginTop="28dp"
+                    android:layout_marginBottom="16dp"
+                    android:text="Enter your 12-word seed phrase"
+                    android:textSize="15sp"
+                    android:textColor="@color/color_text_secondary"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center" />
 
-            </LinearLayout>
-
-            <!-- Seed Input Title -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:layout_marginBottom="16dp"
-                android:text="Enter your 12-word seed phrase"
-                android:textSize="15sp"
-                android:textColor="@color/color_text_secondary"
-                android:fontFamily="sans-serif-medium"
-                android:gravity="center" />
-
-            <!-- Seed Input Grid -->
-            <androidx.gridlayout.widget.GridLayout
-                android:id="@+id/seed_input_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:columnCount="2"
-                app:rowCount="6"
-                app:useDefaultMargins="false"
-                android:layout_marginHorizontal="8dp">
-
-                <!-- Input fields will be added programmatically -->
-
-            </androidx.gridlayout.widget.GridLayout>
-
-            <!-- Paste Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/paste_button"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="24dp"
-                android:text="Paste from Clipboard"
-                android:textSize="15sp"
-                android:textColor="@color/color_text_primary"
-                android:fontFamily="sans-serif-medium"
-                app:cornerRadius="24dp"
-                app:strokeColor="@color/color_divider"
-                app:strokeWidth="1.5dp"
-                app:icon="@drawable/ic_content_copy"
-                app:iconTint="@color/color_text_primary"
-                app:iconGravity="textStart"
-                app:iconPadding="8dp" />
-
-            <!-- Validation Status -->
-            <LinearLayout
-                android:id="@+id/validation_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <ImageView
-                    android:id="@+id/validation_icon"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_marginEnd="8dp" />
-
-                <TextView
-                    android:id="@+id/validation_text"
-                    android:layout_width="wrap_content"
+                <!-- Seed Input Grid -->
+                <androidx.gridlayout.widget.GridLayout
+                    android:id="@+id/seed_input_grid"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
-            </LinearLayout>
+                    app:columnCount="2"
+                    app:rowCount="6"
+                    app:useDefaultMargins="false"
+                    android:layout_marginHorizontal="4dp" />
 
-            <!-- Spacer -->
-            <View
+                <!-- Paste Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/paste_button"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="20dp"
+                    android:text="Paste from Clipboard"
+                    android:textSize="15sp"
+                    android:textColor="@color/color_text_primary"
+                    android:fontFamily="sans-serif-medium"
+                    app:cornerRadius="24dp"
+                    app:strokeColor="@color/color_divider"
+                    app:strokeWidth="1.5dp"
+                    app:icon="@drawable/ic_content_copy"
+                    app:iconTint="@color/color_text_primary"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp" />
+
+                <!-- Validation Status -->
+                <LinearLayout
+                    android:id="@+id/validation_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/validation_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:id="@+id/validation_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Bottom Continue Button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:background="@color/color_bg_white"
+            android:elevation="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/continue_button"
                 android:layout_width="match_parent"
-                android:layout_height="100dp" />
+                android:layout_height="56dp"
+                android:text="Continue"
+                android:textSize="16sp"
+                android:textColor="@color/color_bg_white"
+                android:fontFamily="sans-serif-medium"
+                android:backgroundTint="@color/color_text_primary"
+                android:enabled="false"
+                android:alpha="0.5"
+                app:cornerRadius="28dp" />
 
         </LinearLayout>
-    </ScrollView>
-
-    <!-- Bottom Container with Restore Button -->
-    <LinearLayout
-        android:id="@+id/bottom_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:background="@color/color_bg_white"
-        android:elevation="8dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/restore_button"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Restore Wallet"
-            android:textSize="16sp"
-            android:textColor="@color/color_bg_white"
-            android:fontFamily="sans-serif-medium"
-            android:backgroundTint="@color/color_text_primary"
-            android:enabled="false"
-            android:alpha="0.5"
-            app:cornerRadius="28dp" />
 
     </LinearLayout>
 
-    <!-- Restore Progress Overlay -->
+    <!-- ============================================ -->
+    <!-- STEP 2: Fetching Backup Overlay             -->
+    <!-- ============================================ -->
     <FrameLayout
-        android:id="@+id/restore_progress_overlay"
+        android:id="@+id/fetching_overlay"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#F5FFFFFF"
+        android:layout_height="0dp"
+        android:background="@color/color_bg_white"
         android:clickable="true"
         android:focusable="true"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:orientation="vertical"
-            android:paddingHorizontal="32dp"
+            android:paddingHorizontal="48dp"
             android:gravity="center">
 
             <ProgressBar
-                android:id="@+id/restore_progress_spinner"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:indeterminate="true"
                 android:indeterminateTint="@color/color_text_primary" />
 
             <TextView
-                android:id="@+id/restore_progress_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="Restoring Wallet"
+                android:text="Checking for Backup"
                 android:textSize="20sp"
                 android:textColor="@color/color_text_primary"
                 android:fontFamily="sans-serif-medium" />
 
             <TextView
-                android:id="@+id/restore_progress_status"
+                android:id="@+id/fetching_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Connecting to mints..."
+                android:text="Searching Nostr relays..."
                 android:textSize="15sp"
                 android:textColor="@color/color_text_secondary"
                 android:gravity="center" />
-
-            <!-- Mint Progress Container -->
-            <LinearLayout
-                android:id="@+id/mint_progress_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:orientation="vertical"
-                android:visibility="gone" />
 
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Success Overlay -->
-    <FrameLayout
-        android:id="@+id/restore_success_overlay"
+    <!-- ============================================ -->
+    <!-- STEP 3: Review Mints Container              -->
+    <!-- ============================================ -->
+    <LinearLayout
+        android:id="@+id/review_mints_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/color_bg_white"
-        android:clickable="true"
-        android:focusable="true"
+        android:layout_height="0dp"
+        android:orientation="vertical"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintBottom_toBottomOf="parent">
 
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <!-- Backup Status Card -->
+                <LinearLayout
+                    android:id="@+id/backup_status_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_success_card">
+
+                    <ImageView
+                        android:id="@+id/backup_status_icon"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_marginEnd="14dp"
+                        android:src="@drawable/ic_cloud_done" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/backup_status_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Backup Found"
+                            android:textSize="15sp"
+                            android:textColor="@color/color_success_green"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/backup_status_subtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Last backed up Jan 1, 2024"
+                            android:textSize="13sp"
+                            android:textColor="@color/color_text_secondary" />
+
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Section Header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="Select mints to restore"
+                    android:textSize="13sp"
+                    android:textColor="@color/color_text_tertiary"
+                    android:fontFamily="sans-serif-medium"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.05" />
+
+                <TextView
+                    android:id="@+id/mints_count_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:text="0 mints selected"
+                    android:textSize="14sp"
+                    android:textColor="@color/color_text_secondary" />
+
+                <!-- Mints List Container -->
+                <LinearLayout
+                    android:id="@+id/mints_list_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Bottom Start Restore Button -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
             android:orientation="vertical"
-            android:paddingHorizontal="32dp"
-            android:gravity="center">
-
-            <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@drawable/ic_checkmark_circle_2"
-                app:tint="@color/color_success_green" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Wallet Restored"
-                android:textSize="24sp"
-                android:textColor="@color/color_text_primary"
-                android:fontFamily="sans-serif-medium" />
-
-            <TextView
-                android:id="@+id/success_summary_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Your wallet has been successfully restored"
-                android:textSize="15sp"
-                android:textColor="@color/color_text_secondary"
-                android:gravity="center" />
-
-            <!-- Balance Changes Container -->
-            <LinearLayout
-                android:id="@+id/balance_changes_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:orientation="vertical" />
+            android:padding="24dp"
+            android:background="@color/color_bg_white"
+            android:elevation="8dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/done_button"
+                android:id="@+id/start_restore_button"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_marginTop="32dp"
-                android:text="Done"
+                android:text="Start Restore"
                 android:textSize="16sp"
                 android:textColor="@color/color_bg_white"
                 android:fontFamily="sans-serif-medium"
@@ -322,6 +370,156 @@
                 app:cornerRadius="28dp" />
 
         </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ============================================ -->
+    <!-- STEP 4: Restore Progress Overlay            -->
+    <!-- ============================================ -->
+    <FrameLayout
+        android:id="@+id/restore_progress_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@color/color_bg_white"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:paddingHorizontal="32dp"
+                android:paddingVertical="48dp"
+                android:gravity="center">
+
+                <ProgressBar
+                    android:id="@+id/restore_progress_spinner"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/color_text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="Restoring Wallet"
+                    android:textSize="20sp"
+                    android:textColor="@color/color_text_primary"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/restore_progress_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Connecting to mints..."
+                    android:textSize="15sp"
+                    android:textColor="@color/color_text_secondary"
+                    android:gravity="center" />
+
+                <!-- Mint Progress Container -->
+                <LinearLayout
+                    android:id="@+id/mint_progress_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="32dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <!-- ============================================ -->
+    <!-- STEP 5: Success Overlay                     -->
+    <!-- ============================================ -->
+    <FrameLayout
+        android:id="@+id/restore_success_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@color/color_bg_white"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="32dp"
+                android:paddingTop="48dp"
+                android:paddingBottom="24dp"
+                android:gravity="center_horizontal">
+
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:src="@drawable/ic_checkmark_circle_2"
+                    app:tint="@color/color_success_green" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="Wallet Restored"
+                    android:textSize="24sp"
+                    android:textColor="@color/color_text_primary"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/success_summary_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Your wallet has been successfully restored"
+                    android:textSize="15sp"
+                    android:textColor="@color/color_text_secondary"
+                    android:gravity="center" />
+
+                <!-- Balance Changes Container -->
+                <LinearLayout
+                    android:id="@+id/balance_changes_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="32dp"
+                    android:orientation="vertical" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:minHeight="32dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/done_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Done"
+                    android:textSize="16sp"
+                    android:textColor="@color/color_bg_white"
+                    android:fontFamily="sans-serif-medium"
+                    android:backgroundTint="@color/color_success_green"
+                    app:cornerRadius="28dp" />
+
+            </LinearLayout>
+        </ScrollView>
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

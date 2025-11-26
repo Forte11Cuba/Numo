@@ -48,6 +48,7 @@ object NostrMintBackup {
     private const val D_TAG_VALUE = "mint-list"
     private const val CLIENT_NAME = "shellshock"
     private const val DOMAIN_SEPARATOR = "cashu-mint-backup"
+    private const val FETCH_TIMEOUT_MS = 15000L // 15 seconds total timeout
 
     // Nostr relays for backup
     private val BACKUP_RELAYS = listOf(
@@ -224,6 +225,249 @@ object NostrMintBackup {
                     error = e.message
                 ))
             }
+        }
+    }
+
+    /**
+     * Result of a backup fetch attempt.
+     */
+    data class FetchResult(
+        val success: Boolean,
+        val mints: List<String>,
+        val timestamp: Long?,
+        val fromRelay: String?,
+        val error: String?
+    )
+
+    /**
+     * Fetch mint backup from Nostr relays.
+     * Searches for kind 30078 events with d-tag "mint-list" authored by the derived pubkey.
+     * 
+     * @param mnemonic The 12-word seed phrase to derive keys from
+     * @param callback Callback with the fetch result
+     */
+    fun fetchMintBackup(
+        mnemonic: String,
+        callback: (FetchResult) -> Unit
+    ) {
+        scope.launch {
+            try {
+                Log.d(TAG, "Starting mint backup fetch from Nostr")
+                
+                // Derive keys from mnemonic
+                val (privateKey, publicKeyHex) = deriveBackupKeys(mnemonic)
+                val publicKeyBytes = hexToBytes(publicKeyHex)
+                
+                Log.d(TAG, "Derived backup pubkey for fetch: $publicKeyHex")
+                
+                // Track received events and results
+                val receivedEvents = ConcurrentHashMap<String, Pair<String, NostrEvent>>() // eventId -> (relayUrl, event)
+                val completedRelays = ConcurrentHashMap.newKeySet<String>()
+                val latch = java.util.concurrent.CountDownLatch(BACKUP_RELAYS.size)
+                
+                // Connect to each relay and send REQ
+                for (relayUrl in BACKUP_RELAYS) {
+                    fetchFromRelay(
+                        relayUrl = relayUrl,
+                        publicKeyHex = publicKeyHex,
+                        onEvent = { event ->
+                            if (event.id != null) {
+                                receivedEvents[event.id!!] = Pair(relayUrl, event)
+                                Log.d(TAG, "Received backup event ${event.id} from $relayUrl")
+                            }
+                        },
+                        onComplete = {
+                            completedRelays.add(relayUrl)
+                            Log.d(TAG, "EOSE from $relayUrl")
+                            latch.countDown()
+                        },
+                        onError = { error ->
+                            Log.e(TAG, "Error fetching from $relayUrl: $error")
+                            completedRelays.add(relayUrl)
+                            latch.countDown()
+                        }
+                    )
+                }
+                
+                // Wait for all relays with timeout
+                val completed = latch.await(FETCH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                
+                if (!completed) {
+                    Log.w(TAG, "Fetch timed out, ${completedRelays.size}/${BACKUP_RELAYS.size} relays responded")
+                }
+                
+                if (receivedEvents.isEmpty()) {
+                    Log.d(TAG, "No mint backup found on any relay")
+                    callback(FetchResult(
+                        success = false,
+                        mints = emptyList(),
+                        timestamp = null,
+                        fromRelay = null,
+                        error = "No mint backup found"
+                    ))
+                    return@launch
+                }
+                
+                // Find the most recent event (by created_at)
+                val mostRecent = receivedEvents.values.maxByOrNull { (_, event) -> event.created_at }
+                if (mostRecent == null) {
+                    callback(FetchResult(
+                        success = false,
+                        mints = emptyList(),
+                        timestamp = null,
+                        fromRelay = null,
+                        error = "No valid events found"
+                    ))
+                    return@launch
+                }
+                
+                val (fromRelay, event) = mostRecent
+                Log.d(TAG, "Using most recent event from $fromRelay (created_at: ${event.created_at})")
+                
+                // Decrypt the content
+                try {
+                    val conversationKey = Nip44.getConversationKey(privateKey, publicKeyBytes)
+                    val decryptedJson = Nip44.decrypt(event.content, conversationKey)
+                    
+                    Log.d(TAG, "Decrypted backup content: $decryptedJson")
+                    
+                    val backupData = gson.fromJson(decryptedJson, MintBackupData::class.java)
+                    
+                    Log.d(TAG, "✅ Successfully fetched ${backupData.mints.size} mints from Nostr")
+                    Log.d(TAG, "   Mints: ${backupData.mints.joinToString(", ")}")
+                    Log.d(TAG, "   Backup timestamp: ${backupData.timestamp}")
+                    Log.d(TAG, "   From relay: $fromRelay")
+                    
+                    callback(FetchResult(
+                        success = true,
+                        mints = backupData.mints,
+                        timestamp = backupData.timestamp,
+                        fromRelay = fromRelay,
+                        error = null
+                    ))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to decrypt backup content", e)
+                    callback(FetchResult(
+                        success = false,
+                        mints = emptyList(),
+                        timestamp = null,
+                        fromRelay = fromRelay,
+                        error = "Failed to decrypt backup: ${e.message}"
+                    ))
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Mint backup fetch failed", e)
+                callback(FetchResult(
+                    success = false,
+                    mints = emptyList(),
+                    timestamp = null,
+                    fromRelay = null,
+                    error = e.message
+                ))
+            }
+        }
+    }
+
+    private fun fetchFromRelay(
+        relayUrl: String,
+        publicKeyHex: String,
+        onEvent: (NostrEvent) -> Unit,
+        onComplete: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        try {
+            val request = Request.Builder().url(relayUrl).build()
+            val subscriptionId = "mintbackup-${System.currentTimeMillis()}"
+            
+            okHttpClient.newWebSocket(request, object : WebSocketListener() {
+                private var receivedEose = false
+                
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    Log.d(TAG, "Connected to $relayUrl for fetch, sending REQ...")
+                    
+                    // Build REQ message for addressable event (kind 30078, d-tag "mint-list")
+                    val filter = JsonObject().apply {
+                        val kinds = JsonArray().apply { add(EVENT_KIND) }
+                        add("kinds", kinds)
+                        
+                        val authors = JsonArray().apply { add(publicKeyHex) }
+                        add("authors", authors)
+                        
+                        val dTagFilter = JsonArray().apply { add(D_TAG_VALUE) }
+                        add("#d", dTagFilter)
+                        
+                        // Only get one (the most recent, since it's replaceable)
+                        addProperty("limit", 1)
+                    }
+                    
+                    val reqMessage = JsonArray().apply {
+                        add("REQ")
+                        add(subscriptionId)
+                        add(filter)
+                    }
+                    
+                    Log.d(TAG, "Sending REQ to $relayUrl: $reqMessage")
+                    webSocket.send(reqMessage.toString())
+                }
+                
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    try {
+                        val arr = gson.fromJson(text, JsonArray::class.java)
+                        if (arr.size() >= 2) {
+                            val type = arr[0].asString
+                            when (type) {
+                                "EVENT" -> {
+                                    if (arr.size() >= 3) {
+                                        val subId = arr[1].asString
+                                        if (subId == subscriptionId) {
+                                            val eventJson = arr[2]
+                                            val event = gson.fromJson(eventJson, NostrEvent::class.java)
+                                            if (event != null) {
+                                                onEvent(event)
+                                            }
+                                        }
+                                    }
+                                }
+                                "EOSE" -> {
+                                    receivedEose = true
+                                    // Send CLOSE and disconnect
+                                    val closeMessage = JsonArray().apply {
+                                        add("CLOSE")
+                                        add(subscriptionId)
+                                    }
+                                    webSocket.send(closeMessage.toString())
+                                    webSocket.close(1000, "done")
+                                    onComplete()
+                                }
+                                "NOTICE" -> {
+                                    Log.w(TAG, "NOTICE from $relayUrl: ${arr[1].asString}")
+                                }
+                                "CLOSED" -> {
+                                    if (!receivedEose) {
+                                        webSocket.close(1000, "closed by relay")
+                                        onComplete()
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing message from $relayUrl", e)
+                    }
+                }
+                
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    onError(t.message ?: "connection failed")
+                }
+                
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (!receivedEose) {
+                        onComplete()
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            onError(e.message ?: "failed to connect")
         }
     }
 

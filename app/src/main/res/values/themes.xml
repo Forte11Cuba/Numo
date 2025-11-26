@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base Theme -->
+    <!-- Base Theme (Light Mode) -->
     <style name="Theme.Shellshock" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/color_primary_green_light</item>
@@ -10,11 +10,12 @@
         <item name="colorSecondary">@color/color_primary_green_light</item>
         <item name="colorSecondaryVariant">@color/color_primary_green</item>
         <item name="colorOnSecondary">@color/color_bg_white</item>
-        <!-- Status bar color. -->
+        <!-- Status bar color - matches window background for seamless edge-to-edge -->
         <item name="android:statusBarColor">@color/color_bg_white</item>
         <item name="android:windowLightStatusBar">true</item>
-        <!-- Navigation bar color (Transparent for floating pill) -->
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Navigation bar color - matches window background for seamless edge-to-edge -->
+        <item name="android:navigationBarColor">@color/color_bg_white</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <!-- Text colors -->
         <item name="android:textColor">@color/color_text_primary</item>
         <!-- Background colors -->

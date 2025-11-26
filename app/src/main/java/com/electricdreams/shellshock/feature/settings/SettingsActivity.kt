@@ -35,5 +35,9 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.security_settings_item).setOnClickListener {
             startActivity(Intent(this, SecuritySettingsActivity::class.java))
         }
+
+        findViewById<View>(R.id.developer_settings_item).setOnClickListener {
+            startActivity(Intent(this, DeveloperSettingsActivity::class.java))
+        }
     }
 }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base Theme (Dark Mode) -->
     <style name="Theme.Shellshock" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">#FFFFFF</item>
@@ -9,8 +10,12 @@
         <item name="colorSecondary">#FFFFFF</item>
         <item name="colorSecondaryVariant">#FFFFFF</item>
         <item name="colorOnSecondary">#000000</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- Status bar color - matches window background for seamless edge-to-edge -->
+        <item name="android:statusBarColor">@color/dark_windowBackground</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Navigation bar color - matches window background for seamless edge-to-edge -->
+        <item name="android:navigationBarColor">@color/dark_windowBackground</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <!-- Text colors -->
         <item name="android:textColor">@color/dark_textColorPrimary</item>
         <!-- Background colors -->
@@ -37,5 +42,15 @@
         <item name="titleTextColor">@color/dark_textColorPrimary</item>
         <item name="subtitleTextColor">@color/dark_textColorSecondary</item>
         <item name="colorControlNormal">@color/dark_iconTint</item>
+    </style>
+    
+    <!-- Fullscreen Theme for Barcode Scanner (Dark Mode) -->
+    <style name="Theme.Shellshock.Fullscreen" parent="Theme.Shellshock">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
