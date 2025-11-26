@@ -33,6 +33,7 @@ class TransactionDetailActivity : AppCompatActivity() {
     private var position: Int = -1
     private var paymentType: String? = null
     private var lightningInvoice: String? = null
+    private var checkoutBasketJson: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +54,7 @@ class TransactionDetailActivity : AppCompatActivity() {
         position = intent.getIntExtra(EXTRA_TRANSACTION_POSITION, -1)
         paymentType = intent.getStringExtra(EXTRA_TRANSACTION_PAYMENT_TYPE)
         lightningInvoice = intent.getStringExtra(EXTRA_TRANSACTION_LIGHTNING_INVOICE)
+        checkoutBasketJson = intent.getStringExtra(EXTRA_CHECKOUT_BASKET_JSON)
 
         // Create entry object (normalize nullable unit fields via Kotlin defaults)
         entry = PaymentHistoryEntry(
@@ -254,10 +256,26 @@ class TransactionDetailActivity : AppCompatActivity() {
         val copyButton: Button = findViewById(R.id.btn_copy)
         val openWithButton: Button = findViewById(R.id.btn_open_with)
         val deleteButton: Button = findViewById(R.id.btn_delete)
+        val viewBasketButton: Button = findViewById(R.id.btn_view_basket)
 
         copyButton.setOnClickListener { copyToken() }
         openWithButton.setOnClickListener { openWithApp() }
         deleteButton.setOnClickListener { showDeleteConfirmation() }
+
+        // Show View Basket button only if there's basket data
+        if (!checkoutBasketJson.isNullOrEmpty()) {
+            viewBasketButton.visibility = View.VISIBLE
+            viewBasketButton.setOnClickListener { openBasketReceipt() }
+        } else {
+            viewBasketButton.visibility = View.GONE
+        }
+    }
+
+    private fun openBasketReceipt() {
+        val intent = Intent(this, BasketReceiptActivity::class.java).apply {
+            putExtra(BasketReceiptActivity.EXTRA_CHECKOUT_BASKET_JSON, checkoutBasketJson)
+        }
+        startActivity(intent)
     }
 
     private fun copyToken() {
@@ -356,5 +374,6 @@ class TransactionDetailActivity : AppCompatActivity() {
         const val EXTRA_TRANSACTION_POSITION = "transaction_position"
         const val EXTRA_TRANSACTION_PAYMENT_TYPE = "transaction_payment_type"
         const val EXTRA_TRANSACTION_LIGHTNING_INVOICE = "transaction_lightning_invoice"
+        const val EXTRA_CHECKOUT_BASKET_JSON = "checkout_basket_json"
     }
 }

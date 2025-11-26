@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.Toast
 import com.electricdreams.shellshock.PaymentRequestActivity
 import com.electricdreams.shellshock.core.model.Amount
+import com.electricdreams.shellshock.core.model.CheckoutBasket
 import com.electricdreams.shellshock.core.util.BasketManager
 import com.electricdreams.shellshock.core.util.CurrencyManager
 import com.electricdreams.shellshock.core.worker.BitcoinPriceWorker
@@ -22,6 +23,7 @@ class CheckoutHandler(
     /**
      * Proceed to checkout if basket is valid.
      * Calculates totals, formats the amount, and navigates to PaymentRequestActivity.
+     * Captures a snapshot of the basket for receipt documentation.
      */
     fun proceedToCheckout() {
         if (basketManager.getTotalItemCount() == 0) {
@@ -44,9 +46,23 @@ class CheckoutHandler(
         // Determine how to format the amount for PaymentRequestActivity
         val formattedAmount = formatPaymentAmount(fiatTotal, satsTotal)
 
+        // Create a snapshot of the basket BEFORE clearing it
+        // This preserves the checkout data for receipt generation
+        val checkoutBasket = CheckoutBasket.fromBasketManager(
+            basketManager = basketManager,
+            currency = currencyManager.getCurrentCurrency(),
+            bitcoinPrice = if (btcPrice > 0) btcPrice else null,
+            totalSatoshis = totalSatoshis,
+        )
+        val checkoutBasketJson = checkoutBasket.toJson()
+        
+        android.util.Log.d("CheckoutHandler", "Captured basket with ${checkoutBasket.items.size} items, total: $totalSatoshis sats")
+        android.util.Log.d("CheckoutHandler", "Basket JSON size: ${checkoutBasketJson.length} chars")
+
         val intent = Intent(activity, PaymentRequestActivity::class.java).apply {
             putExtra(PaymentRequestActivity.EXTRA_PAYMENT_AMOUNT, totalSatoshis)
             putExtra(PaymentRequestActivity.EXTRA_FORMATTED_AMOUNT, formattedAmount)
+            putExtra(PaymentRequestActivity.EXTRA_CHECKOUT_BASKET_JSON, checkoutBasketJson)
         }
 
         basketManager.clearBasket()

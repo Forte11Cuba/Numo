@@ -129,6 +129,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
             putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_POSITION, position)
             putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_PAYMENT_TYPE, entry.paymentType)
             putExtra(TransactionDetailActivity.EXTRA_TRANSACTION_LIGHTNING_INVOICE, entry.lightningInvoice)
+            putExtra(TransactionDetailActivity.EXTRA_CHECKOUT_BASKET_JSON, entry.checkoutBasketJson)
         }
 
         startActivityForResult(intent, REQUEST_TRANSACTION_DETAIL)
@@ -232,6 +233,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
             bitcoinPrice: Double?,
             paymentRequest: String?,
             formattedAmount: String?,
+            checkoutBasketJson: String? = null,
         ): String {
             val entry = PaymentHistoryEntry.createPending(
                 amount = amount,
@@ -240,6 +242,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
                 bitcoinPrice = bitcoinPrice,
                 paymentRequest = paymentRequest,
                 formattedAmount = formattedAmount,
+                checkoutBasketJson = checkoutBasketJson,
             )
 
             val history = getPaymentHistory(context).toMutableList()
@@ -287,6 +290,7 @@ class PaymentsHistoryActivity : AppCompatActivity() {
                     lightningQuoteId = lightningQuoteId,
                     lightningMintUrl = lightningMintUrl,
                     formattedAmount = existing.formattedAmount,
+                    checkoutBasketJson = existing.checkoutBasketJson, // Preserve basket data
                 )
                 history[index] = updated
 
