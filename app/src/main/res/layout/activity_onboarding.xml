@@ -1,0 +1,877 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_bg_white">
+
+    <!-- ======================== -->
+    <!-- STEP 1: WELCOME SCREEN   -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/welcome_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="32dp">
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.25" />
+
+            <!-- App Icon -->
+            <ImageView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@mipmap/ic_launcher_round"
+                android:contentDescription="@string/app_name" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/app_name"
+                android:textSize="32sp"
+                android:textColor="@color/color_text_primary"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Bitcoin POS with Cashu ecash"
+                android:textSize="16sp"
+                android:textColor="@color/color_text_secondary"
+                android:gravity="center" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.35" />
+
+            <!-- Welcome Message -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Accept Bitcoin payments instantly with zero fees using Cashu ecash technology."
+                android:textSize="17sp"
+                android:lineHeight="24sp"
+                android:textColor="@color/color_text_secondary"
+                android:gravity="center" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.4" />
+
+            <!-- Terms Text -->
+            <TextView
+                android:id="@+id/terms_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="By continuing, you agree to our Terms of Service and Privacy Policy"
+                android:textSize="13sp"
+                android:textColor="@color/color_text_tertiary"
+                android:gravity="center"
+                android:paddingHorizontal="16dp" />
+
+            <!-- Accept Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/accept_button"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="16dp"
+                android:text="Get Started"
+                android:textSize="17sp"
+                android:textColor="@color/color_bg_white"
+                android:textAllCaps="false"
+                app:cornerRadius="28dp"
+                app:backgroundTint="#000000" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 2: CHOOSE PATH      -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/choose_path_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp">
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.15" />
+
+            <!-- Title -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Set Up Your Wallet"
+                android:textSize="28sp"
+                android:textColor="@color/color_text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Choose how you'd like to get started"
+                android:textSize="16sp"
+                android:textColor="@color/color_text_secondary"
+                android:gravity="center" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.15" />
+
+            <!-- Create New Wallet Card -->
+            <LinearLayout
+                android:id="@+id/create_wallet_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_onboarding_option_card"
+                android:padding="24dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_add_circle"
+                        android:contentDescription="Create wallet"
+                        app:tint="@color/color_success_green" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Create New Wallet"
+                            android:textSize="17sp"
+                            android:textColor="@color/color_text_primary"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Start fresh with a new seed phrase"
+                            android:textSize="14sp"
+                            android:textColor="@color/color_text_secondary" />
+
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/color_text_tertiary" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="16dp" />
+
+            <!-- Restore Wallet Card -->
+            <LinearLayout
+                android:id="@+id/restore_wallet_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_onboarding_option_card"
+                android:padding="24dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_restore"
+                        android:contentDescription="Restore wallet"
+                        app:tint="@color/color_accent_blue" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Restore from Backup"
+                            android:textSize="17sp"
+                            android:textColor="@color/color_text_primary"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Use your existing seed phrase"
+                            android:textSize="14sp"
+                            android:textColor="@color/color_text_secondary" />
+
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/color_text_tertiary" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.7" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 3: ENTER SEED       -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/enter_seed_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- Top Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp">
+
+                <ImageView
+                    android:id="@+id/seed_back_button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_arrow_back"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/color_text_primary"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Restore Wallet"
+                    android:textSize="17sp"
+                    android:textColor="@color/color_text_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center" />
+
+                <Space
+                    android:layout_width="48dp"
+                    android:layout_height="48dp" />
+
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="20dp"
+                    android:paddingBottom="24dp">
+
+                    <!-- Instructions -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Enter your 12-word seed phrase"
+                        android:textSize="24sp"
+                        android:textColor="@color/color_text_primary"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Enter the words in the correct order to restore your wallet."
+                        android:textSize="15sp"
+                        android:textColor="@color/color_text_secondary"
+                        android:lineHeight="20sp" />
+
+                    <!-- Seed Input Grid -->
+                    <androidx.gridlayout.widget.GridLayout
+                        android:id="@+id/seed_input_grid"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        app:columnCount="2"
+                        app:rowCount="6" />
+
+                    <!-- Paste Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/paste_button"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="16dp"
+                        android:text="Paste from Clipboard"
+                        android:textSize="14sp"
+                        android:textAllCaps="false"
+                        app:strokeColor="@color/color_divider"
+                        app:strokeWidth="1dp"
+                        app:cornerRadius="22dp" />
+
+                    <!-- Validation Status -->
+                    <LinearLayout
+                        android:id="@+id/seed_validation_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="16dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:id="@+id/seed_validation_icon"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_check"
+                            app:tint="@color/color_success_green" />
+
+                        <TextView
+                            android:id="@+id/seed_validation_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Ready to continue"
+                            android:textSize="14sp"
+                            android:textColor="@color/color_success_green" />
+
+                    </LinearLayout>
+
+                    <!-- Continue Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/seed_continue_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="24dp"
+                        android:text="Continue"
+                        android:textSize="17sp"
+                        android:textColor="@color/color_bg_white"
+                        android:textAllCaps="false"
+                        android:enabled="false"
+                        android:alpha="0.5"
+                        app:cornerRadius="28dp"
+                        app:backgroundTint="#000000" />
+
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 4a: GENERATING      -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/generating_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="48dp">
+
+            <ProgressBar
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/color_text_primary" />
+
+            <TextView
+                android:id="@+id/generating_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Creating your wallet..."
+                android:textSize="17sp"
+                android:textColor="@color/color_text_primary"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="This will only take a moment"
+                android:textSize="14sp"
+                android:textColor="@color/color_text_secondary"
+                android:gravity="center" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 4b: FETCHING BACKUP -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/fetching_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="48dp">
+
+            <ProgressBar
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/color_text_primary" />
+
+            <TextView
+                android:id="@+id/fetching_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Searching for backup..."
+                android:textSize="17sp"
+                android:textColor="@color/color_text_primary"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Checking Nostr relays for your mint configuration"
+                android:textSize="14sp"
+                android:textColor="@color/color_text_secondary"
+                android:gravity="center" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 5: REVIEW MINTS     -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/review_mints_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- Top Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp">
+
+                <ImageView
+                    android:id="@+id/mints_back_button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_arrow_back"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/color_text_primary"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Your Mints"
+                    android:textSize="17sp"
+                    android:textColor="@color/color_text_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center" />
+
+                <Space
+                    android:layout_width="48dp"
+                    android:layout_height="48dp" />
+
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="20dp"
+                    android:paddingBottom="24dp">
+
+                    <!-- Backup Status Card -->
+                    <LinearLayout
+                        android:id="@+id/backup_status_card"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_success_card"
+                        android:padding="16dp"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:id="@+id/backup_status_icon"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_cloud_done"
+                            app:tint="@color/color_success_green" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="14dp">
+
+                            <TextView
+                                android:id="@+id/backup_status_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Backup Found"
+                                android:textSize="15sp"
+                                android:textColor="@color/color_success_green"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/backup_status_subtitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Last backed up Nov 26, 2024"
+                                android:textSize="13sp"
+                                android:textColor="@color/color_text_secondary" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Title -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="Select Mints"
+                        android:textSize="22sp"
+                        android:textColor="@color/color_text_primary"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:id="@+id/mints_subtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="These mints will store your ecash tokens"
+                        android:textSize="14sp"
+                        android:textColor="@color/color_text_secondary" />
+
+                    <!-- Mints List -->
+                    <LinearLayout
+                        android:id="@+id/mints_list_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="16dp" />
+
+                    <!-- Mints Count -->
+                    <TextView
+                        android:id="@+id/mints_count_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="4 mints selected"
+                        android:textSize="13sp"
+                        android:textColor="@color/color_text_tertiary" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="24dp" />
+
+                    <!-- Continue Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mints_continue_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Continue"
+                        android:textSize="17sp"
+                        android:textColor="@color/color_bg_white"
+                        android:textAllCaps="false"
+                        app:cornerRadius="28dp"
+                        app:backgroundTint="#000000" />
+
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 6: RESTORING        -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/restoring_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- Top Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Restoring Wallet"
+                    android:textSize="17sp"
+                    android:textColor="@color/color_text_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center" />
+
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="20dp"
+                    android:paddingTop="24dp"
+                    android:paddingBottom="24dp"
+                    android:gravity="center_horizontal">
+
+                    <ProgressBar
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:indeterminate="true"
+                        android:indeterminateTint="@color/color_text_primary" />
+
+                    <TextView
+                        android:id="@+id/restoring_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Initializing restore..."
+                        android:textSize="15sp"
+                        android:textColor="@color/color_text_secondary"
+                        android:gravity="center" />
+
+                    <!-- Mint Progress Items -->
+                    <LinearLayout
+                        android:id="@+id/mint_progress_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="32dp" />
+
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ======================== -->
+    <!-- STEP 7: SUCCESS          -->
+    <!-- ======================== -->
+    <FrameLayout
+        android:id="@+id/success_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp">
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.2" />
+
+            <!-- Success Checkmark -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center">
+
+                <ImageView
+                    android:id="@+id/success_checkmark"
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_success_checkmark"
+                    android:contentDescription="Success" />
+
+            </FrameLayout>
+
+            <!-- Success Text -->
+            <TextView
+                android:id="@+id/success_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="Wallet Created"
+                android:textSize="28sp"
+                android:textColor="@color/color_text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/success_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Your wallet is ready to use"
+                android:textSize="16sp"
+                android:textColor="@color/color_text_secondary"
+                android:gravity="center" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.1" />
+
+            <!-- Balance Changes Section (Restore only) -->
+            <LinearLayout
+                android:id="@+id/success_balance_section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="BALANCE BY MINT"
+                    android:textSize="12sp"
+                    android:textColor="@color/color_text_tertiary"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/balance_changes_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.3" />
+
+            <!-- Enter Wallet Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/enter_wallet_button"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="Enter Wallet"
+                android:textSize="17sp"
+                android:textColor="@color/color_bg_white"
+                android:textAllCaps="false"
+                app:cornerRadius="28dp"
+                app:backgroundTint="#000000" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+</FrameLayout>

@@ -32,7 +32,20 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Shellshock"
         tools:targetApi="31">
-        <!-- Modern POS Activity - Main Launcher -->
+        <!-- Onboarding Activity - First Launch -->
+        <activity
+            android:name="com.electricdreams.shellshock.feature.onboarding.OnboardingActivity"
+            android:exported="true"
+            android:label="Welcome"
+            android:theme="@style/Theme.Shellshock"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Modern POS Activity - Main App -->
         <activity
             android:name="com.electricdreams.shellshock.ModernPOSActivity"
             android:exported="true"
@@ -40,11 +53,6 @@
             android:theme="@style/Theme.Shellshock"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            
             <!-- Intent filter for NFC tag discovery -->
             <intent-filter>
                 <action android:name="android.nfc.action.TECH_DISCOVERED" />
