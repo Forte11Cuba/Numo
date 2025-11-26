@@ -178,12 +178,25 @@ class ItemSelectionActivity : AppCompatActivity() {
             private val itemImageView: ImageView = itemView.findViewById(R.id.item_image)
 
             fun bind(item: Item, basketQuantity: Int) {
-                nameView.text = item.name
-
+                // Show name with variation inline in grey
                 if (!item.variationName.isNullOrEmpty()) {
-                    variationView.visibility = View.VISIBLE
-                    variationView.text = item.variationName
+                    val spannable = android.text.SpannableStringBuilder()
+                    spannable.append(item.name ?: "")
+                    spannable.append(" ")
+                    val variationStart = spannable.length
+                    spannable.append(item.variationName)
+                    spannable.setSpan(
+                        android.text.style.ForegroundColorSpan(
+                            itemView.context.getColor(R.color.color_text_tertiary)
+                        ),
+                        variationStart,
+                        spannable.length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    nameView.text = spannable
+                    variationView.visibility = View.GONE
                 } else {
+                    nameView.text = item.name
                     variationView.visibility = View.GONE
                 }
 

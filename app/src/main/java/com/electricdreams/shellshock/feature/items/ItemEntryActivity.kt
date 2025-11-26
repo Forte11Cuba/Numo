@@ -226,7 +226,7 @@ class ItemEntryActivity : AppCompatActivity() {
     }
 
     private fun setupInputValidation() {
-        // Fiat price input - allow only 2 decimal places
+        // Fiat price input - allow both . and , as decimal separators, max 2 decimal places
         priceInput.addTextChangedListener(object : TextWatcher {
             private var current = ""
             
@@ -239,12 +239,15 @@ class ItemEntryActivity : AppCompatActivity() {
                     
                     val cleanString = s.toString()
                     
+                    // Find decimal separator (either . or ,)
+                    val decimalSeparator = if (cleanString.contains(",")) "," else "."
+                    
                     // Validate decimal places
-                    if (cleanString.contains(".")) {
-                        val parts = cleanString.split(".")
+                    if (cleanString.contains(decimalSeparator)) {
+                        val parts = cleanString.split(decimalSeparator)
                         if (parts.size > 1 && parts[1].length > 2) {
                             // Truncate to 2 decimal places
-                            val truncated = "${parts[0]}.${parts[1].substring(0, 2)}"
+                            val truncated = "${parts[0]}$decimalSeparator${parts[1].substring(0, 2)}"
                             priceInput.setText(truncated)
                             priceInput.setSelection(truncated.length)
                         }
@@ -275,7 +278,8 @@ class ItemEntryActivity : AppCompatActivity() {
         backButton?.setOnClickListener { finish() }
         saveButton.setOnClickListener { saveItem() }
         addImageButton.setOnClickListener { showImageSourceDialog() }
-        removeImageButton.setOnClickListener { removeImage() }
+        // Remove photo button is no longer needed - it's in the dialog now
+        removeImageButton.visibility = View.GONE
         scanBarcodeButton.setOnClickListener { launchBarcodeScanner() }
 
         cancelButton.setOnClickListener {
@@ -344,9 +348,9 @@ class ItemEntryActivity : AppCompatActivity() {
                         itemImageView.setImageBitmap(bitmap)
                         itemImageView.visibility = View.VISIBLE
                         imagePlaceholder.visibility = View.GONE
-                        removeImageButton.visibility = View.VISIBLE
                     }
                 }
+                updatePhotoButtonText()
 
                 break
             }
@@ -354,11 +358,11 @@ class ItemEntryActivity : AppCompatActivity() {
     }
 
     private fun formatFiatPrice(price: Double): String {
-        return if (price == price.toLong().toDouble()) {
-            price.toLong().toString()
-        } else {
-            String.format("%.2f", price)
-        }
+        // Use locale-aware formatting for decimal separator
+        val numberFormat = java.text.NumberFormat.getNumberInstance(Locale.getDefault())
+        numberFormat.minimumFractionDigits = if (price == price.toLong().toDouble()) 0 else 2
+        numberFormat.maximumFractionDigits = 2
+        return numberFormat.format(price)
     }
 
     private fun launchBarcodeScanner() {
@@ -367,13 +371,23 @@ class ItemEntryActivity : AppCompatActivity() {
     }
 
     private fun showImageSourceDialog() {
-        val options = arrayOf("Take Photo", "Choose from Gallery")
+        val hasImage = itemImageView.visibility == View.VISIBLE && imagePlaceholder.visibility == View.GONE
+        
+        val options = if (hasImage) {
+            arrayOf("Take Photo", "Choose from Gallery", "Remove Photo")
+        } else {
+            arrayOf("Take Photo", "Choose from Gallery")
+        }
+        
+        val title = if (hasImage) "Edit Picture" else "Add Picture"
+        
         AlertDialog.Builder(this)
-            .setTitle("Add Picture")
+            .setTitle(title)
             .setItems(options) { _, which ->
-                when (which) {
-                    0 -> takePicture()
-                    1 -> selectFromGallery()
+                when {
+                    which == 0 -> takePicture()
+                    which == 1 -> selectFromGallery()
+                    which == 2 && hasImage -> removeImage()
                 }
             }
             .show()
@@ -417,7 +431,7 @@ class ItemEntryActivity : AppCompatActivity() {
         itemImageView.setImageBitmap(null)
         itemImageView.visibility = View.VISIBLE
         imagePlaceholder.visibility = View.VISIBLE
-        removeImageButton.visibility = View.GONE
+        updatePhotoButtonText()
 
         if (isEditMode && currentItem?.imagePath != null) {
             currentItem?.let { itemManager.deleteItemImage(it) }
@@ -431,11 +445,16 @@ class ItemEntryActivity : AppCompatActivity() {
                 itemImageView.setImageBitmap(bitmap)
                 itemImageView.visibility = View.VISIBLE
                 imagePlaceholder.visibility = View.GONE
-                removeImageButton.visibility = View.VISIBLE
+                updatePhotoButtonText()
             } catch (e: Exception) {
                 Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+    
+    private fun updatePhotoButtonText() {
+        val hasImage = itemImageView.visibility == View.VISIBLE && imagePlaceholder.visibility == View.GONE
+        addImageButton.text = if (hasImage) "Edit Photo" else "Add Photo"
     }
 
     override fun onRequestPermissionsResult(
@@ -499,14 +518,16 @@ class ItemEntryActivity : AppCompatActivity() {
                     return
                 }
                 
-                fiatPrice = priceStr.toDoubleOrNull() ?: 0.0
+                // Normalize decimal separator: replace comma with period for parsing
+                val normalizedPriceStr = priceStr.replace(",", ".")
+                fiatPrice = normalizedPriceStr.toDoubleOrNull() ?: 0.0
                 if (fiatPrice < 0) {
                     priceInput.error = "Price must be positive"
                     priceInput.requestFocus()
                     return
                 }
                 
-                // Validate max 2 decimal places
+                // Validate max 2 decimal places (accepting both . and , as separators)
                 if (!isValidFiatPrice(priceStr)) {
                     priceInput.error = "Maximum 2 decimal places allowed"
                     priceInput.requestFocus()
@@ -626,7 +647,8 @@ class ItemEntryActivity : AppCompatActivity() {
     }
 
     private fun isValidFiatPrice(price: String): Boolean {
-        val pattern = Pattern.compile("^\\d+(\\.\\d{0,2})?$")
+        // Accept both . and , as decimal separators, max 2 decimal places
+        val pattern = Pattern.compile("^\\d+([.,]\\d{0,2})?$")
         return pattern.matcher(price).matches()
     }
 

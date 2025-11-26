@@ -48,11 +48,19 @@ data class Item(
 
     /**
      * Get formatted price string based on price type.
+     * Uses device locale for number formatting.
      */
     fun getFormattedPrice(currencySymbol: String = "$"): String {
         return when (priceType) {
             PriceType.SATS -> "$priceSats sats"
-            PriceType.FIAT -> "$currencySymbol${String.format("%.2f", price)}"
+            PriceType.FIAT -> {
+                val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault())
+                // We want to use our own currency symbol but locale's number formatting
+                val numberFormat = java.text.NumberFormat.getNumberInstance(java.util.Locale.getDefault())
+                numberFormat.minimumFractionDigits = 2
+                numberFormat.maximumFractionDigits = 2
+                "$currencySymbol${numberFormat.format(price)}"
+            }
         }
     }
 

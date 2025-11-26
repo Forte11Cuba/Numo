@@ -22,9 +22,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.electricdreams.shellshock.R
 import com.electricdreams.shellshock.core.model.Item
+import com.electricdreams.shellshock.core.util.CurrencyManager
 import com.electricdreams.shellshock.core.util.ItemManager
-import java.util.Currency
-import java.util.Locale
 
 class ItemListActivity : AppCompatActivity() {
 
@@ -144,12 +143,25 @@ class ItemListActivity : AppCompatActivity() {
             private val imagePlaceholder: ImageView = itemView.findViewById(R.id.item_image_placeholder)
 
             fun bind(item: Item) {
-                nameView.text = item.name
-
+                // Show name with variation inline in grey
                 if (!item.variationName.isNullOrEmpty()) {
-                    variationView.visibility = View.VISIBLE
-                    variationView.text = item.variationName
+                    val spannable = android.text.SpannableStringBuilder()
+                    spannable.append(item.name ?: "")
+                    spannable.append(" ")
+                    val variationStart = spannable.length
+                    spannable.append(item.variationName)
+                    spannable.setSpan(
+                        android.text.style.ForegroundColorSpan(
+                            itemView.context.getColor(R.color.color_text_tertiary)
+                        ),
+                        variationStart,
+                        spannable.length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    nameView.text = spannable
+                    variationView.visibility = View.GONE
                 } else {
+                    nameView.text = item.name
                     variationView.visibility = View.GONE
                 }
 
@@ -166,7 +178,8 @@ class ItemListActivity : AppCompatActivity() {
                     skuView.text = ""
                 }
 
-                val currencySymbol = Currency.getInstance(Locale.getDefault()).symbol
+                // Use app's currency setting, not device locale
+                val currencySymbol = CurrencyManager.getInstance(itemView.context).getCurrentSymbol()
                 priceView.text = item.getFormattedPrice(currencySymbol)
 
                 // Only show stock info if inventory tracking is enabled

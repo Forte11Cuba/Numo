@@ -111,13 +111,25 @@ class BasketActivity : AppCompatActivity() {
 
     private fun updateBasketSummary() {
         val itemCount = basketManager.getTotalItemCount()
-        val totalPrice = basketManager.getTotalPrice()
+        val fiatTotal = basketManager.getTotalPrice()
+        val satsTotal = basketManager.getTotalSatsDirectPrice()
 
         basketCountView.text = itemCount.toString()
 
         val formattedTotal = if (itemCount > 0) {
             val currencySymbol = CurrencyManager.getInstance(this).getCurrentSymbol()
-            String.format("%s%.2f", currencySymbol, totalPrice)
+            val numberFormat = java.text.NumberFormat.getNumberInstance(java.util.Locale.getDefault())
+            numberFormat.minimumFractionDigits = 2
+            numberFormat.maximumFractionDigits = 2
+            
+            // Show both fiat and sats if there's a mix
+            if (fiatTotal > 0 && satsTotal > 0) {
+                "$currencySymbol${numberFormat.format(fiatTotal)} + $satsTotal sats"
+            } else if (satsTotal > 0) {
+                "$satsTotal sats"
+            } else {
+                "$currencySymbol${numberFormat.format(fiatTotal)}"
+            }
         } else {
             "0.00"
         }
@@ -175,23 +187,47 @@ class BasketActivity : AppCompatActivity() {
                 val item: Item = basketItem.item
                 val quantity: Int = basketItem.quantity
 
-                nameView.text = item.name
-
+                // Show name with variation inline in grey
                 if (!item.variationName.isNullOrEmpty()) {
-                    variationView.visibility = View.VISIBLE
-                    variationView.text = item.variationName
+                    val spannable = android.text.SpannableStringBuilder()
+                    spannable.append(item.name ?: "")
+                    spannable.append(" ")
+                    val variationStart = spannable.length
+                    spannable.append(item.variationName)
+                    spannable.setSpan(
+                        android.text.style.ForegroundColorSpan(
+                            itemView.context.getColor(R.color.color_text_tertiary)
+                        ),
+                        variationStart,
+                        spannable.length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    nameView.text = spannable
+                    variationView.visibility = View.GONE
                 } else {
+                    nameView.text = item.name
                     variationView.visibility = View.GONE
                 }
 
                 quantityView.text = "Qty: $quantity"
 
-                val currencySymbol =
-                    CurrencyManager.getInstance(itemView.context).getCurrentSymbol()
-                priceView.text = String.format("%s%.2f", currencySymbol, item.price)
+                val currencySymbol = CurrencyManager.getInstance(itemView.context).getCurrentSymbol()
+                
+                // Use item's formatted price method for consistent locale formatting
+                priceView.text = item.getFormattedPrice(currencySymbol)
 
-                val total = item.price * quantity
-                totalView.text = String.format("%s%.2f", currencySymbol, total)
+                // Calculate and format total with locale-aware formatting
+                val numberFormat = java.text.NumberFormat.getNumberInstance(java.util.Locale.getDefault())
+                numberFormat.minimumFractionDigits = 2
+                numberFormat.maximumFractionDigits = 2
+                
+                if (basketItem.isSatsPrice()) {
+                    val totalSats = basketItem.getTotalSats()
+                    totalView.text = "$totalSats sats"
+                } else {
+                    val total = basketItem.getTotalPrice()
+                    totalView.text = "$currencySymbol${numberFormat.format(total)}"
+                }
 
                 removeButton.setOnClickListener {
                     basketManager.removeItem(item.id!!)
