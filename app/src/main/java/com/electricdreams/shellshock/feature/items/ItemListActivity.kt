@@ -167,9 +167,15 @@ class ItemListActivity : AppCompatActivity() {
                 }
 
                 val currencySymbol = Currency.getInstance(Locale.getDefault()).symbol
-                priceView.text = String.format("%s%.2f", currencySymbol, item.price)
+                priceView.text = item.getFormattedPrice(currencySymbol)
 
-                quantityView.text = "In stock: ${item.quantity}"
+                // Only show stock info if inventory tracking is enabled
+                if (item.trackInventory) {
+                    quantityView.visibility = View.VISIBLE
+                    quantityView.text = "In stock: ${item.quantity}"
+                } else {
+                    quantityView.visibility = View.GONE
+                }
 
                 if (!item.imagePath.isNullOrEmpty()) {
                     val bitmap = itemManager.loadItemImage(item)

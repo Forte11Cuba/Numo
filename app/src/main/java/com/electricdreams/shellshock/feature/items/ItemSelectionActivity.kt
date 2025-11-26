@@ -201,9 +201,15 @@ class ItemSelectionActivity : AppCompatActivity() {
                 }
 
                 val currencySymbol = CurrencyManager.getInstance(itemView.context).getCurrentSymbol()
-                priceView.text = String.format("%s%.2f", currencySymbol, item.price)
+                priceView.text = item.getFormattedPrice(currencySymbol)
 
-                quantityView.text = "In stock: ${item.quantity}"
+                // Only show stock info if inventory tracking is enabled
+                if (item.trackInventory) {
+                    quantityView.visibility = View.VISIBLE
+                    quantityView.text = "In stock: ${item.quantity}"
+                } else {
+                    quantityView.visibility = View.GONE
+                }
 
                 basketQuantityView.text = basketQuantity.toString()
 
@@ -225,7 +231,12 @@ class ItemSelectionActivity : AppCompatActivity() {
 
                 decreaseButton.isEnabled = basketQuantity > 0
 
-                val hasStock = item.quantity > basketQuantity || item.quantity == 0
+                // Only enforce stock limits when inventory tracking is enabled
+                val hasStock = if (item.trackInventory) {
+                    item.quantity > basketQuantity
+                } else {
+                    true // No limit when not tracking inventory
+                }
                 increaseButton.isEnabled = hasStock
 
                 decreaseButton.setOnClickListener {

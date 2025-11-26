@@ -8,12 +8,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.text.TextUtils
+import android.text.Editable
+import android.text.InputFilter
+import android.text.TextWatcher
 import android.view.View
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -25,37 +28,80 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.electricdreams.shellshock.R
 import com.electricdreams.shellshock.core.model.Item
+import com.electricdreams.shellshock.core.model.PriceType
+import com.electricdreams.shellshock.core.util.CurrencyManager
 import com.electricdreams.shellshock.core.util.ItemManager
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.switchmaterial.SwitchMaterial
 import java.io.File
 import java.io.IOException
+import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.regex.Pattern
 
+/**
+ * Activity for adding or editing catalog items with an Apple-inspired design.
+ * Features:
+ * - Dual pricing (Fiat or Bitcoin/sats)
+ * - Barcode scanning for SKU
+ * - Inventory tracking with low stock alerts
+ * - Auto-capitalization for text fields
+ */
 class ItemEntryActivity : AppCompatActivity() {
 
+    // UI Elements - Basic Info
     private lateinit var nameInput: EditText
     private lateinit var variationInput: EditText
-    private lateinit var priceInput: EditText
-    private lateinit var skuInput: EditText
-    private lateinit var descriptionInput: EditText
     private lateinit var categoryInput: EditText
+    private lateinit var descriptionInput: EditText
+    private lateinit var skuInput: EditText
+
+    // UI Elements - Pricing
+    private lateinit var priceTypeToggle: MaterialButtonToggleGroup
+    private lateinit var btnPriceFiat: MaterialButton
+    private lateinit var btnPriceBitcoin: MaterialButton
+    private lateinit var fiatPriceContainer: LinearLayout
+    private lateinit var satsPriceContainer: LinearLayout
+    private lateinit var priceInput: EditText
+    private lateinit var satsInput: EditText
+    private lateinit var currencySymbol: TextView
+    private lateinit var currencyCode: TextView
+
+    // UI Elements - Inventory
+    private lateinit var switchTrackInventory: SwitchMaterial
+    private lateinit var inventoryFieldsContainer: LinearLayout
     private lateinit var quantityInput: EditText
-    private lateinit var alertCheckbox: CheckBox
+    private lateinit var alertCheckbox: SwitchMaterial
+    private lateinit var alertThresholdContainer: LinearLayout
     private lateinit var alertThresholdInput: EditText
+
+    // UI Elements - Image
     private lateinit var itemImageView: ImageView
     private lateinit var imagePlaceholder: ImageView
     private lateinit var addImageButton: Button
     private lateinit var removeImageButton: Button
 
+    // UI Elements - Actions
+    private lateinit var scanBarcodeButton: ImageButton
+    private lateinit var cancelButton: Button
+
+    // Managers
     private lateinit var itemManager: ItemManager
+    private lateinit var currencyManager: CurrencyManager
+
+    // State
     private var editItemId: String? = null
     private var isEditMode: Boolean = false
     private var selectedImageUri: Uri? = null
     private var currentItem: Item? = null
     private var currentPhotoPath: String? = null
+    private var currentPriceType: PriceType = PriceType.FIAT
 
+    // Activity Result Launchers
     private val selectGalleryLauncher: ActivityResultLauncher<String> =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
@@ -71,82 +117,187 @@ class ItemEntryActivity : AppCompatActivity() {
             }
         }
 
+    private val barcodeScanLauncher: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val barcodeValue = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE_VALUE)
+                if (!barcodeValue.isNullOrEmpty()) {
+                    skuInput.setText(barcodeValue)
+                    Toast.makeText(this, "Barcode scanned successfully", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_item_entry)
 
+        initializeViews()
+        initializeManagers()
+        setupPriceTypeToggle()
+        setupInventoryTracking()
+        setupInputValidation()
+        setupClickListeners()
+
+        editItemId = intent.getStringExtra(EXTRA_ITEM_ID)
+        isEditMode = !editItemId.isNullOrEmpty()
+
+        if (isEditMode) {
+            setupEditMode()
+            loadItemData()
+        }
+
+        updateCurrencyDisplay()
+    }
+
+    private fun initializeViews() {
+        // Basic Info
         nameInput = findViewById(R.id.item_name_input)
         variationInput = findViewById(R.id.item_variation_input)
-        priceInput = findViewById(R.id.item_price_input)
-        skuInput = findViewById(R.id.item_sku_input)
-        descriptionInput = findViewById(R.id.item_description_input)
         categoryInput = findViewById(R.id.item_category_input)
+        descriptionInput = findViewById(R.id.item_description_input)
+        skuInput = findViewById(R.id.item_sku_input)
+
+        // Pricing
+        priceTypeToggle = findViewById(R.id.price_type_toggle)
+        btnPriceFiat = findViewById(R.id.btn_price_fiat)
+        btnPriceBitcoin = findViewById(R.id.btn_price_bitcoin)
+        fiatPriceContainer = findViewById(R.id.fiat_price_container)
+        satsPriceContainer = findViewById(R.id.sats_price_container)
+        priceInput = findViewById(R.id.item_price_input)
+        satsInput = findViewById(R.id.item_sats_input)
+        currencySymbol = findViewById(R.id.currency_symbol)
+        currencyCode = findViewById(R.id.currency_code)
+
+        // Inventory
+        switchTrackInventory = findViewById(R.id.switch_track_inventory)
+        inventoryFieldsContainer = findViewById(R.id.inventory_fields_container)
         quantityInput = findViewById(R.id.item_quantity_input)
         alertCheckbox = findViewById(R.id.item_alert_checkbox)
+        alertThresholdContainer = findViewById(R.id.alert_threshold_container)
         alertThresholdInput = findViewById(R.id.item_alert_threshold_input)
+
+        // Image
         itemImageView = findViewById(R.id.item_image_view)
         imagePlaceholder = findViewById(R.id.item_image_placeholder)
         addImageButton = findViewById(R.id.item_add_image_button)
         removeImageButton = findViewById(R.id.item_remove_image_button)
 
-        val cancelButton: Button = findViewById(R.id.item_cancel_button)
-        val saveButton: Button = findViewById(R.id.item_save_button)
-        val backButton: View? = findViewById(R.id.back_button)
-
-        addImageButton.setOnClickListener { showImageSourceDialog() }
-        removeImageButton.setOnClickListener { removeImage() }
-
-        itemManager = ItemManager.getInstance(this)
-
-        editItemId = intent.getStringExtra(EXTRA_ITEM_ID)
-        isEditMode = !editItemId.isNullOrEmpty()
-
-        alertCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            alertThresholdInput.isEnabled = isChecked
-        }
-
-        if (isEditMode) {
-            val toolbarTitle: TextView? = findViewById(R.id.toolbar_title)
-            toolbarTitle?.text = "Edit Item"
-
-            cancelButton.text = "Delete Item"
-            cancelButton.setTextColor(resources.getColor(R.color.color_warning_red, null))
-
-            loadItemData()
-        }
-
-        if (isEditMode) {
-            cancelButton.setOnClickListener { showDeleteConfirmationDialog() }
-        } else {
-            cancelButton.setOnClickListener { finish() }
-        }
-
-        saveButton.setOnClickListener { saveItem() }
-        backButton?.setOnClickListener { finish() }
+        // Actions
+        scanBarcodeButton = findViewById(R.id.btn_scan_barcode)
+        cancelButton = findViewById(R.id.item_cancel_button)
     }
 
-    private fun showDeleteConfirmationDialog() {
-        val builder = AlertDialog.Builder(this)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_delete_confirmation, null)
-        builder.setView(dialogView)
+    private fun initializeManagers() {
+        itemManager = ItemManager.getInstance(this)
+        currencyManager = CurrencyManager.getInstance(this)
+    }
 
-        val dialog = builder.create()
+    private fun setupPriceTypeToggle() {
+        // Set initial selection
+        priceTypeToggle.check(R.id.btn_price_fiat)
 
-        val cancelButton: Button = dialogView.findViewById(R.id.dialog_cancel_button)
-        val confirmButton: Button = dialogView.findViewById(R.id.dialog_confirm_button)
+        priceTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                when (checkedId) {
+                    R.id.btn_price_fiat -> {
+                        currentPriceType = PriceType.FIAT
+                        fiatPriceContainer.visibility = View.VISIBLE
+                        satsPriceContainer.visibility = View.GONE
+                    }
+                    R.id.btn_price_bitcoin -> {
+                        currentPriceType = PriceType.SATS
+                        fiatPriceContainer.visibility = View.GONE
+                        satsPriceContainer.visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+    }
 
-        cancelButton.setOnClickListener { dialog.dismiss() }
+    private fun setupInventoryTracking() {
+        switchTrackInventory.setOnCheckedChangeListener { _, isChecked ->
+            inventoryFieldsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
 
-        confirmButton.setOnClickListener {
-            currentItem?.let { item ->
-                itemManager.removeItem(item.id!!)
-                setResult(RESULT_OK)
-                dialog.dismiss()
+        alertCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            alertThresholdContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun setupInputValidation() {
+        // Fiat price input - allow only 2 decimal places
+        priceInput.addTextChangedListener(object : TextWatcher {
+            private var current = ""
+            
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            
+            override fun afterTextChanged(s: Editable?) {
+                if (s.toString() != current) {
+                    priceInput.removeTextChangedListener(this)
+                    
+                    val cleanString = s.toString()
+                    
+                    // Validate decimal places
+                    if (cleanString.contains(".")) {
+                        val parts = cleanString.split(".")
+                        if (parts.size > 1 && parts[1].length > 2) {
+                            // Truncate to 2 decimal places
+                            val truncated = "${parts[0]}.${parts[1].substring(0, 2)}"
+                            priceInput.setText(truncated)
+                            priceInput.setSelection(truncated.length)
+                        }
+                    }
+                    
+                    current = priceInput.text.toString()
+                    priceInput.addTextChangedListener(this)
+                }
+            }
+        })
+
+        // Sats input - integers only (already set in XML with inputType="number")
+        satsInput.filters = arrayOf(InputFilter { source, start, end, dest, dstart, dend ->
+            // Only allow digits
+            for (i in start until end) {
+                if (!Character.isDigit(source[i])) {
+                    return@InputFilter ""
+                }
+            }
+            null
+        })
+    }
+
+    private fun setupClickListeners() {
+        val backButton: View? = findViewById(R.id.back_button)
+        val saveButton: Button = findViewById(R.id.item_save_button)
+
+        backButton?.setOnClickListener { finish() }
+        saveButton.setOnClickListener { saveItem() }
+        addImageButton.setOnClickListener { showImageSourceDialog() }
+        removeImageButton.setOnClickListener { removeImage() }
+        scanBarcodeButton.setOnClickListener { launchBarcodeScanner() }
+
+        cancelButton.setOnClickListener {
+            if (isEditMode) {
+                showDeleteConfirmationDialog()
+            } else {
                 finish()
             }
         }
+    }
 
-        dialog.show()
+    private fun setupEditMode() {
+        val toolbarTitle: TextView? = findViewById(R.id.toolbar_title)
+        toolbarTitle?.text = "Edit Item"
+
+        cancelButton.text = "Delete Item"
+        cancelButton.setTextColor(ContextCompat.getColor(this, R.color.color_warning_red))
+    }
+
+    private fun updateCurrencyDisplay() {
+        currencySymbol.text = currencyManager.getCurrentSymbol()
+        currencyCode.text = currencyManager.getCurrentCurrency()
     }
 
     private fun loadItemData() {
@@ -154,17 +305,39 @@ class ItemEntryActivity : AppCompatActivity() {
             if (item.id == editItemId) {
                 currentItem = item
 
+                // Basic info
                 nameInput.setText(item.name)
                 variationInput.setText(item.variationName)
-                priceInput.setText(item.price.toString())
-                skuInput.setText(item.sku)
-                descriptionInput.setText(item.description)
                 categoryInput.setText(item.category)
+                descriptionInput.setText(item.description)
+                skuInput.setText(item.sku)
+
+                // Pricing
+                currentPriceType = item.priceType
+                when (item.priceType) {
+                    PriceType.FIAT -> {
+                        priceTypeToggle.check(R.id.btn_price_fiat)
+                        priceInput.setText(formatFiatPrice(item.price))
+                        fiatPriceContainer.visibility = View.VISIBLE
+                        satsPriceContainer.visibility = View.GONE
+                    }
+                    PriceType.SATS -> {
+                        priceTypeToggle.check(R.id.btn_price_bitcoin)
+                        satsInput.setText(item.priceSats.toString())
+                        fiatPriceContainer.visibility = View.GONE
+                        satsPriceContainer.visibility = View.VISIBLE
+                    }
+                }
+
+                // Inventory
+                switchTrackInventory.isChecked = item.trackInventory
+                inventoryFieldsContainer.visibility = if (item.trackInventory) View.VISIBLE else View.GONE
                 quantityInput.setText(item.quantity.toString())
-                alertCheckbox.isChecked = item.isAlertEnabled()
-                alertThresholdInput.isEnabled = item.isAlertEnabled()
+                alertCheckbox.isChecked = item.alertEnabled
+                alertThresholdContainer.visibility = if (item.alertEnabled) View.VISIBLE else View.GONE
                 alertThresholdInput.setText(item.alertThreshold.toString())
 
+                // Image
                 if (!item.imagePath.isNullOrEmpty()) {
                     val bitmap = itemManager.loadItemImage(item)
                     if (bitmap != null) {
@@ -178,6 +351,19 @@ class ItemEntryActivity : AppCompatActivity() {
                 break
             }
         }
+    }
+
+    private fun formatFiatPrice(price: Double): String {
+        return if (price == price.toLong().toDouble()) {
+            price.toLong().toString()
+        } else {
+            String.format("%.2f", price)
+        }
+    }
+
+    private fun launchBarcodeScanner() {
+        val intent = Intent(this, BarcodeScannerActivity::class.java)
+        barcodeScanLauncher.launch(intent)
     }
 
     private fun showImageSourceDialog() {
@@ -267,54 +453,119 @@ class ItemEntryActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDeleteConfirmationDialog() {
+        val builder = AlertDialog.Builder(this)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_delete_confirmation, null)
+        builder.setView(dialogView)
+
+        val dialog = builder.create()
+
+        val dialogCancelButton: Button = dialogView.findViewById(R.id.dialog_cancel_button)
+        val confirmButton: Button = dialogView.findViewById(R.id.dialog_confirm_button)
+
+        dialogCancelButton.setOnClickListener { dialog.dismiss() }
+
+        confirmButton.setOnClickListener {
+            currentItem?.let { item ->
+                itemManager.removeItem(item.id!!)
+                setResult(RESULT_OK)
+                dialog.dismiss()
+                finish()
+            }
+        }
+
+        dialog.show()
+    }
+
     private fun saveItem() {
+        // Validate name
         val name = nameInput.text.toString().trim()
-        if (TextUtils.isEmpty(name)) {
+        if (name.isEmpty()) {
             nameInput.error = "Item name is required"
             nameInput.requestFocus()
             return
         }
 
-        val priceStr = priceInput.text.toString().trim()
-        if (TextUtils.isEmpty(priceStr)) {
-            priceInput.error = "Price is required"
-            priceInput.requestFocus()
-            return
-        }
+        // Validate and get price based on type
+        var fiatPrice = 0.0
+        var satsPrice = 0L
 
-        val price = priceStr.toDoubleOrNull()
-        if (price == null || price < 0) {
-            priceInput.error = "Price must be a positive number"
-            priceInput.requestFocus()
-            return
-        }
-
-        val quantityStr = quantityInput.text.toString().trim()
-        var quantity = 0
-        if (!TextUtils.isEmpty(quantityStr)) {
-            val q = quantityStr.toIntOrNull()
-            if (q == null || q < 0) {
-                quantityInput.error = "Quantity must be positive"
-                quantityInput.requestFocus()
-                return
-            }
-            quantity = q
-        }
-
-        var alertThreshold = 5
-        if (alertCheckbox.isChecked) {
-            val thresholdStr = alertThresholdInput.text.toString().trim()
-            if (!TextUtils.isEmpty(thresholdStr)) {
-                val t = thresholdStr.toIntOrNull()
-                if (t == null || t < 0) {
-                    alertThresholdInput.error = "Threshold must be positive"
-                    alertThresholdInput.requestFocus()
+        when (currentPriceType) {
+            PriceType.FIAT -> {
+                val priceStr = priceInput.text.toString().trim()
+                if (priceStr.isEmpty()) {
+                    priceInput.error = "Price is required"
+                    priceInput.requestFocus()
                     return
                 }
-                alertThreshold = t
+                
+                fiatPrice = priceStr.toDoubleOrNull() ?: 0.0
+                if (fiatPrice < 0) {
+                    priceInput.error = "Price must be positive"
+                    priceInput.requestFocus()
+                    return
+                }
+                
+                // Validate max 2 decimal places
+                if (!isValidFiatPrice(priceStr)) {
+                    priceInput.error = "Maximum 2 decimal places allowed"
+                    priceInput.requestFocus()
+                    return
+                }
+            }
+            PriceType.SATS -> {
+                val satsStr = satsInput.text.toString().trim()
+                if (satsStr.isEmpty()) {
+                    satsInput.error = "Price in sats is required"
+                    satsInput.requestFocus()
+                    return
+                }
+                
+                satsPrice = satsStr.toLongOrNull() ?: 0L
+                if (satsPrice < 0) {
+                    satsInput.error = "Sats must be positive"
+                    satsInput.requestFocus()
+                    return
+                }
+                
+                // Validate it's an integer (no decimals)
+                if (satsStr.contains(".") || satsStr.contains(",")) {
+                    satsInput.error = "Sats must be a whole number"
+                    satsInput.requestFocus()
+                    return
+                }
             }
         }
 
+        // Validate inventory if tracking enabled
+        var quantity = 0
+        var alertThreshold = 5
+
+        if (switchTrackInventory.isChecked) {
+            val quantityStr = quantityInput.text.toString().trim()
+            if (quantityStr.isNotEmpty()) {
+                quantity = quantityStr.toIntOrNull() ?: 0
+                if (quantity < 0) {
+                    quantityInput.error = "Quantity must be positive"
+                    quantityInput.requestFocus()
+                    return
+                }
+            }
+
+            if (alertCheckbox.isChecked) {
+                val thresholdStr = alertThresholdInput.text.toString().trim()
+                if (thresholdStr.isNotEmpty()) {
+                    alertThreshold = thresholdStr.toIntOrNull() ?: 5
+                    if (alertThreshold < 0) {
+                        alertThresholdInput.error = "Threshold must be positive"
+                        alertThresholdInput.requestFocus()
+                        return
+                    }
+                }
+            }
+        }
+
+        // Create or update item
         val item = Item().apply {
             if (isEditMode) {
                 id = editItemId
@@ -327,13 +578,29 @@ class ItemEntryActivity : AppCompatActivity() {
 
             this.name = name
             variationName = variationInput.text.toString().trim()
-            this.price = price
-            sku = skuInput.text.toString().trim()
-            description = descriptionInput.text.toString().trim()
             category = categoryInput.text.toString().trim()
-            this.quantity = quantity
-            alertEnabled = alertCheckbox.isChecked
-            this.alertThreshold = alertThreshold
+            description = descriptionInput.text.toString().trim()
+            sku = skuInput.text.toString().trim()
+
+            // Pricing
+            priceType = currentPriceType
+            priceCurrency = currencyManager.getCurrentCurrency()
+            when (currentPriceType) {
+                PriceType.FIAT -> {
+                    price = fiatPrice
+                    priceSats = 0L
+                }
+                PriceType.SATS -> {
+                    price = 0.0
+                    priceSats = satsPrice
+                }
+            }
+
+            // Inventory
+            trackInventory = switchTrackInventory.isChecked
+            this.quantity = if (trackInventory) quantity else 0
+            alertEnabled = switchTrackInventory.isChecked && alertCheckbox.isChecked
+            this.alertThreshold = if (alertEnabled) alertThreshold else 5
         }
 
         val success = if (isEditMode) {
@@ -358,9 +625,13 @@ class ItemEntryActivity : AppCompatActivity() {
         finish()
     }
 
+    private fun isValidFiatPrice(price: String): Boolean {
+        val pattern = Pattern.compile("^\\d+(\\.\\d{0,2})?$")
+        return pattern.matcher(price).matches()
+    }
+
     companion object {
         const val EXTRA_ITEM_ID = "extra_item_id"
         private const val REQUEST_IMAGE_CAPTURE = 1001
-        private const val REQUEST_PICK_IMAGE = 1002
     }
 }

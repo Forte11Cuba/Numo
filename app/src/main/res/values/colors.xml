@@ -31,6 +31,7 @@
     <color name="color_warning">#FF9500</color>
     <color name="color_warning_red">#FF4B4B</color>
     <color name="color_info_blue">#83E8FC</color>
+    <color name="color_bitcoin_orange">#F7931A</color>
 
     <!-- Overlays -->
     <color name="color_scrim">#66000000</color>

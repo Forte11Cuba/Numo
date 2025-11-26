@@ -267,10 +267,22 @@
             android:label="Add Item"
             android:theme="@style/Theme.Shellshock"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
             android:parentActivityName=".feature.items.ItemListActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".feature.items.ItemListActivity" />
+        </activity>
+        
+        <activity android:name="com.electricdreams.shellshock.feature.items.BarcodeScannerActivity"
+            android:exported="false"
+            android:label="Scan Barcode"
+            android:theme="@style/Theme.Shellshock.Fullscreen"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".feature.items.ItemEntryActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".feature.items.ItemEntryActivity" />
         </activity>
         
         <activity android:name="com.electricdreams.shellshock.feature.items.ItemListActivity"

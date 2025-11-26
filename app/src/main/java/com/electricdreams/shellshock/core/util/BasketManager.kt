@@ -107,25 +107,68 @@ class BasketManager private constructor() {
     }
 
     /**
-     * Calculate the total price of all items in the basket.
+     * Calculate the total fiat price of all items in the basket.
+     * Only includes items priced in fiat.
      */
     fun getTotalPrice(): Double {
         var total = 0.0
         for (item in basketItems) {
-            total += item.getTotalPrice()
+            if (!item.isSatsPrice()) {
+                total += item.getTotalPrice()
+            }
+        }
+        return total
+    }
+    
+    /**
+     * Calculate the total sats price of all items in the basket.
+     * Only includes items priced in sats.
+     */
+    fun getTotalSatsDirectPrice(): Long {
+        var total = 0L
+        for (item in basketItems) {
+            if (item.isSatsPrice()) {
+                total += item.getTotalSats()
+            }
         }
         return total
     }
 
     /**
-     * Calculate the total price in satoshis.
+     * Calculate the total price in satoshis (combining fiat and sats priced items).
      * @param btcPrice Current BTC price in fiat.
      */
     fun getTotalSatoshis(btcPrice: Double): Long {
-        if (btcPrice <= 0) return 0
-
+        // Start with items already priced in sats
+        var totalSats = getTotalSatsDirectPrice()
+        
+        // Convert fiat items to sats if we have a valid BTC price
         val fiatTotal = getTotalPrice()
-        val btcAmount = fiatTotal / btcPrice
-        return (btcAmount * 100_000_000L).toLong()
+        if (fiatTotal > 0 && btcPrice > 0) {
+            val btcAmount = fiatTotal / btcPrice
+            totalSats += (btcAmount * 100_000_000L).toLong()
+        }
+        
+        return totalSats
+    }
+    
+    /**
+     * Check if the basket contains items with mixed price types (both fiat and sats).
+     */
+    fun hasMixedPriceTypes(): Boolean {
+        var hasFiat = false
+        var hasSats = false
+        
+        for (item in basketItems) {
+            if (item.isSatsPrice()) {
+                hasSats = true
+            } else {
+                hasFiat = true
+            }
+            
+            if (hasFiat && hasSats) return true
+        }
+        
+        return false
     }
 }

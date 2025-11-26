@@ -32,8 +32,21 @@ data class BasketItem(
     }
 
     /**
-     * Calculate the total price for this basket item (price * quantity).
-     * @return Total price.
+     * Calculate the total fiat price for this basket item (price * quantity).
+     * Only valid for items with FIAT price type.
+     * @return Total fiat price.
      */
     fun getTotalPrice(): Double = item.price * quantity
+    
+    /**
+     * Calculate the total sats price for this basket item (priceSats * quantity).
+     * Only valid for items with SATS price type.
+     * @return Total sats.
+     */
+    fun getTotalSats(): Long = item.priceSats * quantity
+    
+    /**
+     * Check if this item is priced in sats.
+     */
+    fun isSatsPrice(): Boolean = item.priceType == PriceType.SATS
 }

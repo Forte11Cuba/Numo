@@ -95,6 +95,23 @@ class ItemManager private constructor(context: Context) {
                         if (!obj.isNull("imagePath")) {
                             imagePath = obj.getString("imagePath")
                         }
+                        // New fields for sats/fiat pricing
+                        if (!obj.isNull("priceSats")) {
+                            priceSats = obj.getLong("priceSats")
+                        }
+                        if (!obj.isNull("priceType")) {
+                            priceType = try {
+                                com.electricdreams.shellshock.core.model.PriceType.valueOf(obj.getString("priceType"))
+                            } catch (e: IllegalArgumentException) {
+                                com.electricdreams.shellshock.core.model.PriceType.FIAT
+                            }
+                        }
+                        if (!obj.isNull("priceCurrency")) {
+                            priceCurrency = obj.getString("priceCurrency")
+                        }
+                        if (!obj.isNull("trackInventory")) {
+                            trackInventory = obj.getBoolean("trackInventory")
+                        }
                     }
 
                     items.add(item)
@@ -129,6 +146,12 @@ class ItemManager private constructor(context: Context) {
                     put("alertEnabled", item.alertEnabled)
                     put("alertThreshold", item.alertThreshold)
                     item.imagePath?.let { put("imagePath", it) }
+                    
+                    // New fields for sats/fiat pricing
+                    put("priceSats", item.priceSats)
+                    put("priceType", item.priceType.name)
+                    put("priceCurrency", item.priceCurrency)
+                    put("trackInventory", item.trackInventory)
                 }
                 array.put(obj)
             }

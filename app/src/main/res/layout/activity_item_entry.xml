@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/color_bg_white"
+    android:background="@color/color_bg_secondary"
     android:orientation="vertical">
 
     <!-- Top App Bar -->
@@ -13,19 +12,18 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:background="@color/color_bg_white"
-        android:paddingHorizontal="16dp">
+        android:elevation="1dp"
+        android:paddingHorizontal="4dp">
 
         <ImageButton
             android:id="@+id/back_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:padding="12dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back"
             android:src="@drawable/ic_chevron_back"
-            android:tint="@color/color_text_primary"
+            app:tint="@color/color_text_primary"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -58,26 +56,27 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:clipToPadding="false">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:paddingVertical="24dp">
 
-            <!-- Image Section -->
+            <!-- ==================== IMAGE SECTION ==================== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
+                android:layout_marginBottom="24dp"
                 android:gravity="center_horizontal"
                 android:orientation="vertical">
 
                 <androidx.cardview.widget.CardView
                     android:layout_width="100dp"
                     android:layout_height="100dp"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="12dp"
                     app:cardCornerRadius="50dp"
                     app:cardElevation="0dp">
 
@@ -85,14 +84,14 @@
                         android:id="@+id/item_image_view"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:background="@color/color_bg_secondary"
+                        android:background="@color/color_bg_white"
                         android:contentDescription="Item image"
                         android:scaleType="centerCrop" />
 
                     <ImageView
                         android:id="@+id/item_image_placeholder"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
                         android:layout_gravity="center"
                         android:contentDescription="No image"
                         android:src="@android:drawable/ic_menu_camera"
@@ -101,170 +100,544 @@
 
                 <Button
                     android:id="@+id/item_add_image_button"
-                    style="@style/Widget.Button.Secondary.Outlined"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:minHeight="40dp"
-                    android:text="Add Photo" />
-                    
+                    android:layout_height="36dp"
+                    android:text="Add Photo"
+                    android:textColor="@color/color_primary_green"
+                    android:textSize="15sp"
+                    android:textAllCaps="false" />
+
                 <Button
                     android:id="@+id/item_remove_image_button"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Remove"
+                    android:layout_height="32dp"
+                    android:text="Remove Photo"
                     android:textColor="@color/color_warning_red"
+                    android:textSize="13sp"
+                    android:textAllCaps="false"
                     android:visibility="gone" />
 
             </LinearLayout>
 
-            <!-- Form Fields -->
+            <!-- ==================== BASIC INFO SECTION ==================== -->
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
                 android:layout_marginBottom="8dp"
-                android:text="Name"
-                android:textAppearance="@style/Text.BodyBold" />
-
-            <EditText
-                android:id="@+id/item_name_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="24dp"
-                android:background="@drawable/bg_search_field"
-                android:hint="Item Name"
-                android:inputType="text"
-                android:paddingHorizontal="16dp"
-                android:textAppearance="@style/Text.Body" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Price"
-                android:textAppearance="@style/Text.BodyBold" />
-
-            <EditText
-                android:id="@+id/item_price_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="24dp"
-                android:background="@drawable/bg_search_field"
-                android:hint="0.00"
-                android:inputType="numberDecimal"
-                android:paddingHorizontal="16dp"
-                android:textAppearance="@style/Text.Body" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Quantity"
-                android:textAppearance="@style/Text.BodyBold" />
-
-            <EditText
-                android:id="@+id/item_quantity_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="24dp"
-                android:background="@drawable/bg_search_field"
-                android:hint="0"
-                android:inputType="number"
-                android:paddingHorizontal="16dp"
-                android:text="0"
-                android:textAppearance="@style/Text.Body" />
-
-            <!-- Optional Fields Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="16dp"
-                android:text="OPTIONAL DETAILS"
+                android:text="BASIC INFORMATION"
                 android:textAppearance="@style/Text.SectionHeader" />
 
-            <EditText
-                android:id="@+id/item_variation_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/bg_search_field"
-                android:hint="Variation (e.g. Small)"
-                android:inputType="text"
-                android:paddingHorizontal="16dp"
-                android:textAppearance="@style/Text.Body" />
-
-            <EditText
-                android:id="@+id/item_sku_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/bg_search_field"
-                android:hint="SKU"
-                android:inputType="text"
-                android:paddingHorizontal="16dp"
-                android:textAppearance="@style/Text.Body" />
-
-            <EditText
-                android:id="@+id/item_category_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/bg_search_field"
-                android:hint="Category"
-                android:inputType="text"
-                android:paddingHorizontal="16dp"
-                android:textAppearance="@style/Text.Body" />
-
-            <EditText
-                android:id="@+id/item_description_input"
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="24dp"
-                android:background="@drawable/bg_search_field"
-                android:gravity="top"
-                android:hint="Description"
-                android:inputType="textMultiLine"
-                android:minLines="3"
-                android:padding="16dp"
-                android:textAppearance="@style/Text.Body" />
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/color_bg_white">
 
-            <LinearLayout
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:divider="@drawable/divider_horizontal"
+                    android:showDividers="middle">
+
+                    <!-- Item Name -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp"
+                        android:minHeight="50dp">
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="wrap_content"
+                            android:text="Name"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColor="@color/color_text_primary" />
+
+                        <EditText
+                            android:id="@+id/item_name_input"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@null"
+                            android:hint="Item Name"
+                            android:inputType="textCapWords"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColorHint="@color/color_text_tertiary" />
+                    </LinearLayout>
+
+                    <!-- Category -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp"
+                        android:minHeight="50dp">
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="wrap_content"
+                            android:text="Category"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColor="@color/color_text_primary" />
+
+                        <EditText
+                            android:id="@+id/item_category_input"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@null"
+                            android:hint="Optional"
+                            android:inputType="textCapWords"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColorHint="@color/color_text_tertiary" />
+                    </LinearLayout>
+
+                    <!-- Variation -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp"
+                        android:minHeight="50dp">
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="wrap_content"
+                            android:text="Variation"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColor="@color/color_text_primary" />
+
+                        <EditText
+                            android:id="@+id/item_variation_input"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@null"
+                            android:hint="e.g. Small, Large"
+                            android:inputType="textCapWords"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColorHint="@color/color_text_tertiary" />
+                    </LinearLayout>
+
+                    <!-- Description -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="top"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp"
+                        android:minHeight="80dp">
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="wrap_content"
+                            android:text="Description"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColor="@color/color_text_primary" />
+
+                        <EditText
+                            android:id="@+id/item_description_input"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@null"
+                            android:hint="Optional"
+                            android:inputType="textCapSentences|textMultiLine"
+                            android:minLines="2"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColorHint="@color/color_text_tertiary" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ==================== PRICING SECTION ==================== -->
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginBottom="8dp"
+                android:text="PRICING"
+                android:textAppearance="@style/Text.SectionHeader" />
 
-                <CheckBox
-                    android:id="@+id/item_alert_checkbox"
-                    android:layout_width="wrap_content"
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/color_bg_white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Low Stock Alert"
-                    android:textAppearance="@style/Text.Body" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                <EditText
-                    android:id="@+id/item_alert_threshold_input"
-                    android:layout_width="80dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@drawable/bg_search_field"
-                    android:enabled="false"
-                    android:gravity="center"
-                    android:hint="#"
-                    android:inputType="number"
-                    android:text="5"
-                    android:textAppearance="@style/Text.Body" />
-            </LinearLayout>
+                    <!-- Price Type Toggle -->
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/price_type_toggle"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginBottom="16dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="true">
 
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_price_fiat"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="Fiat"
+                            android:textAllCaps="false"
+                            android:textSize="15sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_price_bitcoin"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="Bitcoin"
+                            android:textAllCaps="false"
+                            android:textSize="15sp" />
+
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <!-- Fiat Price Input -->
+                    <LinearLayout
+                        android:id="@+id/fiat_price_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:visibility="visible">
+
+                        <TextView
+                            android:id="@+id/currency_symbol"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="$"
+                            android:textSize="24sp"
+                            android:textColor="@color/color_text_primary"
+                            android:fontFamily="sans-serif-medium"
+                            android:layout_marginEnd="8dp" />
+
+                        <EditText
+                            android:id="@+id/item_price_input"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_input_field_rounded"
+                            android:hint="0.00"
+                            android:inputType="numberDecimal"
+                            android:paddingHorizontal="16dp"
+                            android:textSize="20sp"
+                            android:textColor="@color/color_text_primary"
+                            android:textColorHint="@color/color_text_tertiary"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/currency_code"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="USD"
+                            android:textSize="15sp"
+                            android:textColor="@color/color_text_secondary"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <!-- Bitcoin (Sats) Price Input -->
+                    <LinearLayout
+                        android:id="@+id/sats_price_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="₿"
+                            android:textSize="24sp"
+                            android:textColor="@color/color_bitcoin_orange"
+                            android:fontFamily="sans-serif-medium"
+                            android:layout_marginEnd="8dp" />
+
+                        <EditText
+                            android:id="@+id/item_sats_input"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_input_field_rounded"
+                            android:hint="0"
+                            android:inputType="number"
+                            android:paddingHorizontal="16dp"
+                            android:textSize="20sp"
+                            android:textColor="@color/color_text_primary"
+                            android:textColorHint="@color/color_text_tertiary"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="sats"
+                            android:textSize="15sp"
+                            android:textColor="@color/color_text_secondary"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginBottom="24dp"
+                android:text="Set a fixed price in your preferred currency. Bitcoin prices are in satoshis (sats)."
+                android:textAppearance="@style/Text.Caption" />
+
+            <!-- ==================== SKU / BARCODE SECTION ==================== -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginBottom="8dp"
+                android:text="IDENTIFICATION"
+                android:textAppearance="@style/Text.SectionHeader" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/color_bg_white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="8dp"
+                    android:minHeight="50dp">
+
+                    <TextView
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:text="SKU"
+                        android:textAppearance="@style/Text.Body"
+                        android:textColor="@color/color_text_primary" />
+
+                    <EditText
+                        android:id="@+id/item_sku_input"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@null"
+                        android:hint="Enter or scan barcode"
+                        android:inputType="text"
+                        android:textAppearance="@style/Text.Body"
+                        android:textColorHint="@color/color_text_tertiary" />
+
+                    <ImageButton
+                        android:id="@+id/btn_scan_barcode"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Scan barcode"
+                        android:src="@drawable/ic_barcode_scan"
+                        app:tint="@color/color_primary_green" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ==================== INVENTORY SECTION ==================== -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginBottom="8dp"
+                android:text="INVENTORY"
+                android:textAppearance="@style/Text.SectionHeader" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/color_bg_white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:divider="@drawable/divider_horizontal"
+                    android:showDividers="middle">
+
+                    <!-- Track Inventory Toggle -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp"
+                        android:minHeight="50dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Track Quantity"
+                            android:textAppearance="@style/Text.Body"
+                            android:textColor="@color/color_text_primary" />
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/switch_track_inventory"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+
+                    </LinearLayout>
+
+                    <!-- Inventory Fields Container (shown when tracking enabled) -->
+                    <LinearLayout
+                        android:id="@+id/inventory_fields_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:divider="@drawable/divider_horizontal"
+                        android:showDividers="middle">
+
+                        <!-- Quantity -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:minHeight="50dp">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="Current Stock"
+                                android:textAppearance="@style/Text.Body"
+                                android:textColor="@color/color_text_primary" />
+
+                            <EditText
+                                android:id="@+id/item_quantity_input"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:background="@null"
+                                android:gravity="end"
+                                android:hint="0"
+                                android:inputType="number"
+                                android:textAppearance="@style/Text.Body"
+                                android:textColorHint="@color/color_text_tertiary" />
+                        </LinearLayout>
+
+                        <!-- Low Stock Alert Toggle -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:minHeight="50dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Low Stock Alert"
+                                android:textAppearance="@style/Text.Body"
+                                android:textColor="@color/color_text_primary" />
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/item_alert_checkbox"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                        <!-- Alert Threshold (shown when alerts enabled) -->
+                        <LinearLayout
+                            android:id="@+id/alert_threshold_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:minHeight="50dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:text="Alert When Below"
+                                android:textAppearance="@style/Text.Body"
+                                android:textColor="@color/color_text_primary" />
+
+                            <EditText
+                                android:id="@+id/item_alert_threshold_input"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:background="@null"
+                                android:gravity="end"
+                                android:hint="5"
+                                android:inputType="number"
+                                android:text="5"
+                                android:textAppearance="@style/Text.Body"
+                                android:textColorHint="@color/color_text_tertiary" />
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginBottom="32dp"
+                android:text="Enable inventory tracking to monitor stock levels and receive low stock alerts."
+                android:textAppearance="@style/Text.Caption" />
+
+            <!-- ==================== DELETE BUTTON (Edit mode only) ==================== -->
             <Button
                 android:id="@+id/item_cancel_button"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="32dp"
                 android:text="Cancel"
                 android:textAppearance="@style/Text.Button"
-                android:textColor="@color/color_warning_red" />
+                android:textColor="@color/color_text_secondary" />
 
         </LinearLayout>
     </ScrollView>
