@@ -12,11 +12,14 @@ import android.text.Editable
 import android.text.InputFilter
 import android.text.TextWatcher
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -71,6 +74,18 @@ class ItemEntryActivity : AppCompatActivity() {
     private lateinit var satsInput: EditText
     private lateinit var currencySymbol: TextView
     private lateinit var currencyCode: TextView
+
+    // UI Elements - VAT
+    private lateinit var vatSectionCard: View
+    private lateinit var switchVatEnabled: SwitchMaterial
+    private lateinit var vatFieldsContainer: LinearLayout
+    private lateinit var switchPriceIncludesVat: SwitchMaterial
+    private lateinit var spinnerVatRate: Spinner
+    private lateinit var priceBreakdownContainer: LinearLayout
+    private lateinit var textNetPrice: TextView
+    private lateinit var textVatLabel: TextView
+    private lateinit var textVatAmount: TextView
+    private lateinit var textGrossPrice: TextView
 
     // UI Elements - Inventory
     private lateinit var switchTrackInventory: SwitchMaterial
@@ -136,6 +151,7 @@ class ItemEntryActivity : AppCompatActivity() {
         initializeViews()
         initializeManagers()
         setupPriceTypeToggle()
+        setupVatSection()
         setupInventoryTracking()
         setupInputValidation()
         setupClickListeners()
@@ -149,6 +165,7 @@ class ItemEntryActivity : AppCompatActivity() {
         }
 
         updateCurrencyDisplay()
+        updateVatSectionVisibility()
     }
 
     private fun initializeViews() {
@@ -169,6 +186,18 @@ class ItemEntryActivity : AppCompatActivity() {
         satsInput = findViewById(R.id.item_sats_input)
         currencySymbol = findViewById(R.id.currency_symbol)
         currencyCode = findViewById(R.id.currency_code)
+
+        // VAT
+        vatSectionCard = findViewById(R.id.vat_section_card)
+        switchVatEnabled = findViewById(R.id.switch_vat_enabled)
+        vatFieldsContainer = findViewById(R.id.vat_fields_container)
+        switchPriceIncludesVat = findViewById(R.id.switch_price_includes_vat)
+        spinnerVatRate = findViewById(R.id.spinner_vat_rate)
+        priceBreakdownContainer = findViewById(R.id.price_breakdown_container)
+        textNetPrice = findViewById(R.id.text_net_price)
+        textVatLabel = findViewById(R.id.text_vat_label)
+        textVatAmount = findViewById(R.id.text_vat_amount)
+        textGrossPrice = findViewById(R.id.text_gross_price)
 
         // Inventory
         switchTrackInventory = findViewById(R.id.switch_track_inventory)
@@ -205,14 +234,115 @@ class ItemEntryActivity : AppCompatActivity() {
                         currentPriceType = PriceType.FIAT
                         fiatPriceContainer.visibility = View.VISIBLE
                         satsPriceContainer.visibility = View.GONE
+                        updateVatSectionVisibility()
                     }
                     R.id.btn_price_bitcoin -> {
                         currentPriceType = PriceType.SATS
                         fiatPriceContainer.visibility = View.GONE
                         satsPriceContainer.visibility = View.VISIBLE
+                        updateVatSectionVisibility()
                     }
                 }
             }
+        }
+    }
+
+    private fun setupVatSection() {
+        // Setup VAT rate spinner
+        val vatRateLabels = Item.COMMON_VAT_RATES.map { it.first }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, vatRateLabels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerVatRate.adapter = adapter
+        
+        // Default to 20% (index 5)
+        spinnerVatRate.setSelection(5)
+
+        // VAT enabled toggle
+        switchVatEnabled.setOnCheckedChangeListener { _, isChecked ->
+            vatFieldsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+            priceBreakdownContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+            updatePriceBreakdown()
+        }
+
+        // Price includes VAT toggle
+        switchPriceIncludesVat.setOnCheckedChangeListener { _, _ ->
+            updatePriceBreakdown()
+        }
+
+        // VAT rate spinner
+        spinnerVatRate.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                updatePriceBreakdown()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+
+    }
+
+    private fun updateVatSectionVisibility() {
+        // VAT section only visible for fiat prices
+        vatSectionCard.visibility = if (currentPriceType == PriceType.FIAT) View.VISIBLE else View.GONE
+        
+        // Hide breakdown when VAT section is hidden
+        if (currentPriceType != PriceType.FIAT) {
+            priceBreakdownContainer.visibility = View.GONE
+        } else if (switchVatEnabled.isChecked) {
+            priceBreakdownContainer.visibility = View.VISIBLE
+        }
+    }
+
+    private fun updatePriceBreakdown() {
+        if (!switchVatEnabled.isChecked || currentPriceType != PriceType.FIAT) {
+            priceBreakdownContainer.visibility = View.GONE
+            return
+        }
+
+        priceBreakdownContainer.visibility = View.VISIBLE
+
+        // Get entered price
+        val priceStr = priceInput.text.toString().trim().replace(",", ".")
+        val enteredPrice = priceStr.toDoubleOrNull() ?: 0.0
+
+        // Get selected VAT rate
+        val selectedPosition = spinnerVatRate.selectedItemPosition
+        val vatRate = Item.COMMON_VAT_RATES.getOrNull(selectedPosition)?.second ?: 0.0
+
+        // Calculate prices based on whether entered price includes VAT or not
+        val netPrice: Double
+        val grossPrice: Double
+        val vatAmount: Double
+
+        if (switchPriceIncludesVat.isChecked) {
+            // Entered price is gross (includes VAT) - need to calculate net
+            grossPrice = enteredPrice
+            netPrice = Item.calculateNetFromGross(grossPrice, vatRate)
+            vatAmount = grossPrice - netPrice
+        } else {
+            // Entered price is net (excludes VAT) - need to calculate gross
+            netPrice = enteredPrice
+            grossPrice = Item.calculateGrossFromNet(netPrice, vatRate)
+            vatAmount = grossPrice - netPrice
+        }
+
+        // Format and display
+        val currency = Amount.Currency.fromCode(currencyManager.getCurrentCurrency())
+        
+        textNetPrice.text = Amount.fromMajorUnits(netPrice, currency).toString()
+        textVatLabel.text = "VAT (${vatRate.toInt()}%)"
+        textVatAmount.text = Amount.fromMajorUnits(vatAmount, currency).toString()
+        textGrossPrice.text = Amount.fromMajorUnits(grossPrice, currency).toString()
+    }
+
+    private fun getSelectedVatRate(): Double {
+        val selectedPosition = spinnerVatRate.selectedItemPosition
+        return Item.COMMON_VAT_RATES.getOrNull(selectedPosition)?.second ?: 0.0
+    }
+
+    private fun setVatRateByValue(rate: Double) {
+        val index = Item.COMMON_VAT_RATES.indexOfFirst { it.second == rate }
+        if (index >= 0) {
+            spinnerVatRate.setSelection(index)
         }
     }
 
@@ -256,6 +386,9 @@ class ItemEntryActivity : AppCompatActivity() {
                     
                     current = priceInput.text.toString()
                     priceInput.addTextChangedListener(this)
+                    
+                    // Update VAT breakdown in real-time
+                    updatePriceBreakdown()
                 }
             }
         })
@@ -322,7 +455,9 @@ class ItemEntryActivity : AppCompatActivity() {
                 when (item.priceType) {
                     PriceType.FIAT -> {
                         priceTypeToggle.check(R.id.btn_price_fiat)
-                        priceInput.setText(formatFiatPrice(item.price))
+                        // Show gross price (including VAT) in the input field for user editing
+                        val displayPrice = if (item.vatEnabled) item.getGrossPrice() else item.price
+                        priceInput.setText(formatFiatPrice(displayPrice))
                         fiatPriceContainer.visibility = View.VISIBLE
                         satsPriceContainer.visibility = View.GONE
                     }
@@ -333,6 +468,18 @@ class ItemEntryActivity : AppCompatActivity() {
                         satsPriceContainer.visibility = View.VISIBLE
                     }
                 }
+
+                // VAT
+                switchVatEnabled.isChecked = item.vatEnabled
+                vatFieldsContainer.visibility = if (item.vatEnabled) View.VISIBLE else View.GONE
+                priceBreakdownContainer.visibility = if (item.vatEnabled && item.priceType == PriceType.FIAT) View.VISIBLE else View.GONE
+                setVatRateByValue(item.vatRate)
+                // When editing, we show gross price in input, so price "includes VAT"
+                switchPriceIncludesVat.isChecked = true
+                
+                // Update VAT section visibility and breakdown
+                updateVatSectionVisibility()
+                updatePriceBreakdown()
 
                 // Inventory
                 switchTrackInventory.isChecked = item.trackInventory
@@ -522,8 +669,8 @@ class ItemEntryActivity : AppCompatActivity() {
                 
                 // Normalize decimal separator: replace comma with period for parsing
                 val normalizedPriceStr = priceStr.replace(",", ".")
-                fiatPrice = normalizedPriceStr.toDoubleOrNull() ?: 0.0
-                if (fiatPrice < 0) {
+                val enteredPrice = normalizedPriceStr.toDoubleOrNull() ?: 0.0
+                if (enteredPrice < 0) {
                     priceInput.error = "Price must be positive"
                     priceInput.requestFocus()
                     return
@@ -534,6 +681,19 @@ class ItemEntryActivity : AppCompatActivity() {
                     priceInput.error = "Maximum 2 decimal places allowed"
                     priceInput.requestFocus()
                     return
+                }
+
+                // Convert entered price to net price if VAT is enabled
+                val vatEnabled = switchVatEnabled.isChecked
+                val priceIncludesVat = switchPriceIncludesVat.isChecked
+                val vatRate = getSelectedVatRate()
+
+                fiatPrice = if (vatEnabled && priceIncludesVat) {
+                    // Entered price includes VAT - calculate net price
+                    Item.calculateNetFromGross(enteredPrice, vatRate)
+                } else {
+                    // Entered price is net price (or no VAT)
+                    enteredPrice
                 }
             }
             PriceType.SATS -> {
@@ -610,13 +770,22 @@ class ItemEntryActivity : AppCompatActivity() {
             priceCurrency = currencyManager.getCurrentCurrency()
             when (currentPriceType) {
                 PriceType.FIAT -> {
-                    price = fiatPrice
+                    price = fiatPrice // Always store net price (excluding VAT)
                     priceSats = 0L
                 }
                 PriceType.SATS -> {
                     price = 0.0
                     priceSats = satsPrice
                 }
+            }
+
+            // VAT (only for fiat items)
+            if (currentPriceType == PriceType.FIAT) {
+                vatEnabled = switchVatEnabled.isChecked
+                vatRate = if (vatEnabled) getSelectedVatRate() else 0.0
+            } else {
+                vatEnabled = false
+                vatRate = 0.0
             }
 
             // Inventory

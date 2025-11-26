@@ -32,11 +32,12 @@ data class BasketItem(
     }
 
     /**
-     * Calculate the total fiat price for this basket item (price * quantity).
+     * Calculate the total fiat price for this basket item (gross price * quantity).
+     * Uses gross price (including VAT) for customer-facing calculations.
      * Only valid for items with FIAT price type.
-     * @return Total fiat price.
+     * @return Total fiat price including VAT.
      */
-    fun getTotalPrice(): Double = item.price * quantity
+    fun getTotalPrice(): Double = item.getGrossPrice() * quantity
     
     /**
      * Calculate the total sats price for this basket item (priceSats * quantity).
