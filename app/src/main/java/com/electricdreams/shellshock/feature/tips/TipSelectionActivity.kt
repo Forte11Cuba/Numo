@@ -72,6 +72,12 @@ class TipSelectionActivity : AppCompatActivity() {
     // Preset buttons
     private val presetButtons = mutableListOf<View>()
     private var selectedPresetButton: View? = null
+    
+    // Keypad decimal button reference
+    private var decimalKeyButton: View? = null
+    
+    // Track if confirm button is showing (for animation)
+    private var isConfirmButtonShowing = false
 
     private var bitcoinPriceWorker: BitcoinPriceWorker? = null
 
@@ -357,7 +363,32 @@ class TipSelectionActivity : AppCompatActivity() {
                 onKeypadPress(key)
             }
 
+            // Store reference to decimal key
+            if (key == ".") {
+                decimalKeyButton = keyButton
+            }
+
             customKeypad.addView(keyButton)
+        }
+        
+        // Update decimal key visibility based on initial currency mode
+        updateDecimalKeyVisibility()
+    }
+    
+    private fun updateDecimalKeyVisibility() {
+        decimalKeyButton?.let { button ->
+            val keyText = button.findViewById<TextView>(R.id.key_text)
+            if (customInputIsBtc) {
+                // Hide decimal for Bitcoin (sats are whole numbers)
+                keyText.alpha = 0f
+                button.isClickable = false
+                button.isFocusable = false
+            } else {
+                // Show decimal for fiat
+                keyText.alpha = 1f
+                button.isClickable = true
+                button.isFocusable = true
+            }
         }
     }
 
@@ -504,6 +535,7 @@ class TipSelectionActivity : AppCompatActivity() {
         customInputValue = ""
         updateCustomAmountDisplay()
         updateCustomCurrencyDisplay()
+        updateDecimalKeyVisibility()
         calculateCustomTip()
 
         // Animate the toggle
@@ -524,12 +556,22 @@ class TipSelectionActivity : AppCompatActivity() {
     private fun showCustomInputMode() {
         isCustomMode = true
         customInputValue = ""
+        isConfirmButtonShowing = false // Reset button state
         updateCustomAmountDisplay()
         updateCustomCurrencyDisplay()
+        updateDecimalKeyVisibility()
 
         // Deselect all preset buttons
         presetButtons.forEach { animateButtonSelection(it, false) }
         selectedPresetButton = null
+        
+        // Reset button layout to initial state (Back full width, Confirm hidden)
+        customConfirmButton.visibility = View.GONE
+        val backParams = customBackButton.layoutParams as LinearLayout.LayoutParams
+        backParams.width = LinearLayout.LayoutParams.MATCH_PARENT
+        backParams.weight = 0f
+        backParams.marginEnd = 0
+        customBackButton.layoutParams = backParams
 
         // Hide tip options, show custom input
         tipOptionsContainer.animate()
@@ -567,8 +609,6 @@ class TipSelectionActivity : AppCompatActivity() {
                     .start()
             }
             .start()
-
-        updateCustomConfirmButton(false)
     }
 
     private fun showTipOptionsMode() {
@@ -627,13 +667,67 @@ class TipSelectionActivity : AppCompatActivity() {
     }
 
     private fun updateCustomConfirmButton(enabled: Boolean) {
-        if (enabled) {
-            customConfirmButton.alpha = 1f
-            customConfirmButton.isEnabled = true
-        } else {
-            customConfirmButton.alpha = 0.4f
-            customConfirmButton.isEnabled = false
+        val shouldShowConfirm = enabled
+        
+        if (shouldShowConfirm && !isConfirmButtonShowing) {
+            // Animate from full-width Back button to side-by-side layout
+            isConfirmButtonShowing = true
+            
+            // Show confirm button
+            customConfirmButton.visibility = View.VISIBLE
+            customConfirmButton.alpha = 0f
+            customConfirmButton.scaleX = 0.8f
+            customConfirmButton.scaleY = 0.8f
+            
+            // Animate Back button to shrink
+            val backParams = customBackButton.layoutParams as LinearLayout.LayoutParams
+            backParams.width = 0
+            backParams.weight = 1f
+            backParams.marginEnd = dpToPx(8)
+            customBackButton.layoutParams = backParams
+            
+            // Animate Confirm button to appear
+            val confirmParams = customConfirmButton.layoutParams as LinearLayout.LayoutParams
+            confirmParams.width = 0
+            confirmParams.weight = 1f
+            confirmParams.marginStart = dpToPx(8)
+            customConfirmButton.layoutParams = confirmParams
+            
+            // Smooth animation
+            customConfirmButton.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(250)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+                
+        } else if (!shouldShowConfirm && isConfirmButtonShowing) {
+            // Animate back to full-width Back button
+            isConfirmButtonShowing = false
+            
+            // Animate Confirm button to disappear
+            customConfirmButton.animate()
+                .alpha(0f)
+                .scaleX(0.8f)
+                .scaleY(0.8f)
+                .setDuration(200)
+                .setInterpolator(DecelerateInterpolator())
+                .withEndAction {
+                    customConfirmButton.visibility = View.GONE
+                    
+                    // Animate Back button to expand
+                    val backParams = customBackButton.layoutParams as LinearLayout.LayoutParams
+                    backParams.width = LinearLayout.LayoutParams.MATCH_PARENT
+                    backParams.weight = 0f
+                    backParams.marginEnd = 0
+                    customBackButton.layoutParams = backParams
+                }
+                .start()
         }
+        
+        // Update enabled state
+        customConfirmButton.isEnabled = enabled
     }
 
     private fun animateEntrance() {
