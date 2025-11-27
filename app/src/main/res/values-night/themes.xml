@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Base Theme (Dark Mode) -->
-    <style name="Theme.Shellshock" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.Numo" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">#FFFFFF</item>
         <item name="colorPrimaryVariant">@color/dark_colorPrimaryDark</item>
@@ -45,7 +45,7 @@
     </style>
     
     <!-- Fullscreen Theme for Barcode Scanner (Dark Mode) -->
-    <style name="Theme.Shellshock.Fullscreen" parent="Theme.Shellshock">
+    <style name="Theme.Numo.Fullscreen" parent="Theme.Numo">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:statusBarColor">@android:color/black</item>

@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.electricdreams.shellshock"
+    namespace = "com.electricdreams.numo"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.electricdreams.shellshock"
+        applicationId = "com.electricdreams.numo"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

@@ -42,7 +42,7 @@ should again expose the Cashu payment request.
 
 ### 2.1 Enumerate HCE mode and track current state
 
-**File:** `app/src/main/java/com/electricdreams/shellshock/PaymentRequestActivity.kt`
+**File:** `app/src/main/java/com/electricdreams/numo/PaymentRequestActivity.kt`
 
 1. Add an enum and a state field near the top of the class.
 
