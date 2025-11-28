@@ -5,127 +5,188 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bg_dialog_rounded"
-    android:padding="20dp">
+    android:background="@drawable/bg_dialog_rounded_large"
+    android:paddingTop="8dp"
+    android:paddingBottom="24dp">
 
-    <!-- Header -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- DRAG HANDLE - Apple sheet style                                          -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_drag_handle" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- HERO SECTION - Order summary with icon and total                         -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="24dp">
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+        <!-- Success Icon -->
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_circle_success">
 
-            <TextView
-                android:id="@+id/basket_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/color_text_primary"
-                android:textSize="20sp"
-                android:fontFamily="sans-serif-medium"
-                tools:text="Table 5" />
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="@android:color/white" />
 
-            <TextView
-                android:id="@+id/basket_date"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/color_text_tertiary"
-                android:textSize="13sp"
-                tools:text="Mar 15, 2024 at 2:30 PM" />
+        </FrameLayout>
 
-        </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/close_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="@drawable/bg_circle_secondary"
-            android:src="@drawable/ic_close"
-            android:contentDescription="@string/common_close"
-            app:tint="@color/color_text_secondary" />
-
-    </LinearLayout>
-
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="16dp"
-        android:background="@color/color_divider" />
-
-    <!-- Items -->
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="12dp"
-        android:maxHeight="300dp">
-
-        <LinearLayout
-            android:id="@+id/items_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-    </ScrollView>
-
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:background="@color/color_divider" />
-
-    <!-- Total -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
+        <!-- Order Name -->
         <TextView
-            android:layout_width="0dp"
+            android:id="@+id/basket_name"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/basket_archive_total_label"
+            android:layout_marginTop="16dp"
+            android:textSize="22sp"
             android:textColor="@color/color_text_primary"
-            android:textSize="17sp"
-            android:fontFamily="sans-serif-medium" />
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.02"
+            android:gravity="center"
+            tools:text="Table 5" />
 
+        <!-- PAID Badge -->
+        <TextView
+            android:id="@+id/paid_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:text="@string/basket_archive_paid_badge"
+            android:textSize="11sp"
+            android:textColor="@android:color/white"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.08"
+            android:background="@drawable/bg_badge_success_pill" />
+
+        <!-- Total Amount (Large) -->
         <TextView
             android:id="@+id/basket_total"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textSize="36sp"
             android:textColor="@color/color_text_primary"
-            android:textSize="20sp"
             android:fontFamily="sans-serif-medium"
-            tools:text="$45.00" />
+            android:letterSpacing="-0.02"
+            tools:text="$74.97" />
+
+        <!-- Date/Time -->
+        <TextView
+            android:id="@+id/basket_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="14sp"
+            android:textColor="@color/color_text_tertiary"
+            tools:text="Nov 26, 2024 at 2:30 PM" />
 
     </LinearLayout>
 
-    <!-- View Payment Button -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- ITEMS CARD - Rounded container with items list                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:layout_marginHorizontal="16dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_rounded_card_large"
+        android:clipChildren="true"
+        android:clipToPadding="true">
+
+        <!-- Section Header -->
+        <TextView
+            android:id="@+id/items_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="10dp"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/color_text_tertiary"
+            android:letterSpacing="0.06"
+            tools:text="3 ITEMS" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="16dp"
+            android:background="@color/color_divider" />
+
+        <!-- Items ScrollView -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:fillViewport="true">
+
+            <!-- Max height constraint via code or just let it scroll -->
+            <LinearLayout
+                android:id="@+id/items_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="4dp" />
+
+        </ScrollView>
+
+    </LinearLayout>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- ACTION BUTTON - View Payment                                             -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/view_payment_button"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginTop="20dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginHorizontal="16dp"
         android:text="@string/basket_archive_view_payment"
-        android:textColor="@color/color_bg_white"
-        android:textSize="16sp"
+        android:textColor="@android:color/white"
+        android:textSize="17sp"
+        android:textAllCaps="false"
         android:fontFamily="sans-serif-medium"
-        app:backgroundTint="@color/color_accent_blue"
+        android:letterSpacing="0"
+        app:backgroundTint="@color/color_success_green"
         app:cornerRadius="14dp"
+        app:rippleColor="@color/color_primary_green_pressed"
         app:icon="@drawable/ic_receipt"
         app:iconGravity="textStart"
         app:iconPadding="8dp"
-        app:iconTint="@color/color_bg_white"
+        app:iconTint="@android:color/white"
         style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
+
+    <!-- Close button (subtle, at bottom) -->
+    <TextView
+        android:id="@+id/close_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="8dp"
+        android:text="@string/common_close"
+        android:textSize="15sp"
+        android:textColor="@color/color_text_tertiary"
+        android:fontFamily="sans-serif-medium"
+        android:background="?attr/selectableItemBackgroundBorderless" />
 
 </LinearLayout>

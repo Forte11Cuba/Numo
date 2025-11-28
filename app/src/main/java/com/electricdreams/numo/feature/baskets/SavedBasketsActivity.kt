@@ -105,22 +105,50 @@ class SavedBasketsActivity : AppCompatActivity() {
     }
 
     private fun showRenameDialog(basket: SavedBasket) {
-        val editText = EditText(this).apply {
-            setText(basket.name ?: "")
-            hint = getString(R.string.saved_baskets_rename_hint)
-            setPadding(48, 32, 48, 32)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_Numo_BottomSheetDialog)
+            .setView(R.layout.dialog_rename_basket)
+            .create()
+
+        // Configure window BEFORE showing to prevent layout jump
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setLayout(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            setGravity(android.view.Gravity.BOTTOM)
+            setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         }
 
-        AlertDialog.Builder(this)
-            .setTitle(R.string.saved_baskets_rename_title)
-            .setView(editText)
-            .setPositiveButton(R.string.common_save) { _, _ ->
-                val newName = editText.text.toString().trim().takeIf { it.isNotEmpty() }
+        dialog.setOnShowListener {
+            val editText = dialog.findViewById<EditText>(R.id.basket_name_input)
+            val saveButton = dialog.findViewById<View>(R.id.save_button)
+            val cancelButton = dialog.findViewById<View>(R.id.cancel_button)
+
+            // Pre-fill existing name
+            editText?.setText(basket.name ?: "")
+            editText?.setSelection(editText.text.length) // Cursor at end
+
+            saveButton?.setOnClickListener {
+                val newName = editText?.text.toString().trim().takeIf { it.isNotEmpty() }
                 savedBasketManager.updateBasketName(basket.id, newName)
                 loadBaskets()
+                dialog.dismiss()
             }
-            .setNegativeButton(R.string.common_cancel, null)
-            .show()
+
+            cancelButton?.setOnClickListener {
+                dialog.dismiss()
+            }
+
+            // Show keyboard for input - slightly longer delay for smoother appearance
+            editText?.requestFocus()
+            editText?.postDelayed({
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }, 300)
+        }
+
+        dialog.show()
     }
 
     private fun showDeleteConfirmation(basket: SavedBasket) {

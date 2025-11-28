@@ -31,11 +31,14 @@
 
     <!-- Status & Semantic Colors -->
     <color name="color_success_green">#00C244</color>
+    <color name="color_primary_green_pressed">#00A03A</color>
     <color name="color_warning">#FF9500</color>
     <color name="color_warning_red">#FF4B4B</color>
     <color name="color_info_blue">#83E8FC</color>
     <color name="color_bitcoin_orange">#F7931A</color>
     <color name="color_accent_blue">#007AFF</color>
+    <color name="color_accent_blue_light">#E5F2FF</color>
+    <color name="color_accent_blue_pressed">#0062CC</color>
 
     <!-- Overlays -->
     <color name="color_scrim">#66000000</color>

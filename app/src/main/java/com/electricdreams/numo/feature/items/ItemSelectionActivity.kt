@@ -372,25 +372,53 @@ class ItemSelectionActivity : AppCompatActivity() {
     }
     
     private fun showSaveBasketDialog() {
-        val editText = EditText(this).apply {
-            hint = getString(R.string.item_selection_save_basket_hint)
-            setPadding(48, 32, 48, 32)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_Numo_BottomSheetDialog)
+            .setView(R.layout.dialog_save_basket)
+            .create()
+
+        // Configure window BEFORE showing
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            // Set layout params before show to prevent jump
+            setLayout(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            // Position at bottom for bottom sheet feel, adjust for keyboard
+            setGravity(android.view.Gravity.BOTTOM)
+            // Ensure keyboard doesn't cause jarring resize
+            setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         }
-        
-        AlertDialog.Builder(this)
-            .setTitle(R.string.item_selection_save_basket)
-            .setView(editText)
-            .setPositiveButton(R.string.common_save) { _, _ ->
-                val name = editText.text.toString().trim().takeIf { it.isNotEmpty() }
+
+        dialog.setOnShowListener {
+            val editText = dialog.findViewById<EditText>(R.id.basket_name_input)
+            val saveButton = dialog.findViewById<View>(R.id.save_button)
+            val cancelButton = dialog.findViewById<View>(R.id.cancel_button)
+
+            saveButton?.setOnClickListener {
+                val name = editText?.text.toString().trim().takeIf { it.isNotEmpty() }
                 savedBasketManager.saveCurrentBasket(name, basketManager)
                 savedBasketManager.clearEditingState()
                 basketManager.clearBasket()
                 itemsAdapter.clearAllQuantities()
                 refreshBasket()
+                dialog.dismiss()
                 finish()
             }
-            .setNegativeButton(R.string.common_cancel, null)
-            .show()
+
+            cancelButton?.setOnClickListener {
+                dialog.dismiss()
+            }
+
+            // Show keyboard for input - slightly longer delay for smoother appearance
+            editText?.requestFocus()
+            editText?.postDelayed({
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }, 300)
+        }
+
+        dialog.show()
     }
     
     private fun updateEditingState() {

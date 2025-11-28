@@ -541,6 +541,19 @@
     <string name="item_selection_saved_baskets_button">Saved</string>
     <string name="item_selection_save_basket">Save Basket</string>
     <string name="item_selection_save_basket_hint">Enter a name (optional)</string>
+
+    <!-- Save Basket Dialog -->
+    <string name="dialog_save_basket_title">Save Basket</string>
+    <string name="dialog_save_basket_subtitle">Give your basket a name to find it easily later.</string>
+    <string name="dialog_save_basket_hint">Table 5, John order, etc.</string>
+    <string name="dialog_save_basket_helper">Leave empty to use default name</string>
+    <string name="dialog_save_basket_save">Save Basket</string>
+
+    <!-- Rename Basket Dialog -->
+    <string name="dialog_rename_basket_title">Rename Basket</string>
+    <string name="dialog_rename_basket_subtitle">Update the name for this basket.</string>
+    <string name="dialog_rename_basket_hint">Enter new name</string>
+    <string name="dialog_rename_basket_save">Save Changes</string>
     <string name="item_selection_editing_basket">Editing: %1$s</string>
 
     <!-- Saved Baskets -->
@@ -569,7 +582,7 @@
     <string name="basket_archive_delete_title">Delete Order</string>
     <string name="basket_archive_delete_message">Delete \"%1$s\"? This cannot be undone.</string>
     <string name="basket_archive_total_label">Total</string>
-    <string name="saved_baskets_view_archive">View Archive</string>
+    <string name="saved_baskets_view_archive">Archive</string>
 
     <!-- Common -->
     <string name="common_save">Save</string>

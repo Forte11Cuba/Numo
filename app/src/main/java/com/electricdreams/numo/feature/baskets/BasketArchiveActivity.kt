@@ -142,29 +142,55 @@ class BasketArchiveActivity : AppCompatActivity() {
 }
 
 /**
- * Simple dialog to show basket details with expandable items.
+ * Apple-style dialog to show basket details with beautiful layout.
+ * Features hero section with success icon, large total, and items in rounded card.
  */
 class BasketDetailDialog(
     context: android.content.Context,
     private val basket: SavedBasket,
     private val currencyManager: CurrencyManager,
     private val onPaymentClick: () -> Unit
-) : AlertDialog(context) {
+) : AlertDialog(context, R.style.Theme_Numo_BottomSheetDialog) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.dialog_basket_detail)
 
+        // Make dialog full width with rounded corners
+        window?.setBackgroundDrawableResource(android.R.color.transparent)
+        window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        setupHeader()
+        setupItemsList()
+        setupActions()
+    }
+
+    private fun setupHeader() {
         // Get index for display name
         val savedBasketManager = SavedBasketManager.getInstance(context)
         val index = savedBasketManager.getArchivedBasketIndex(basket.id)
 
-        // Header
+        // Order name
         findViewById<TextView>(R.id.basket_name)?.text = basket.getDisplayName(index)
         
         // Date
         val dateFormat = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())
-        findViewById<TextView>(R.id.basket_date)?.text = dateFormat.format(Date(basket.paidAt ?: basket.updatedAt))
+        findViewById<TextView>(R.id.basket_date)?.text = 
+            dateFormat.format(Date(basket.paidAt ?: basket.updatedAt))
+
+        // Total amount (large, hero style)
+        val totalText = formatTotal()
+        findViewById<TextView>(R.id.basket_total)?.text = totalText
+    }
+
+    private fun setupItemsList() {
+        // Items header with count
+        val itemCount = basket.items.sumOf { it.quantity }
+        val headerText = if (itemCount == 1) "1 ITEM" else "$itemCount ITEMS"
+        findViewById<TextView>(R.id.items_header)?.text = headerText
 
         // Items list
         val itemsContainer = findViewById<LinearLayout>(R.id.items_container)
@@ -173,9 +199,27 @@ class BasketDetailDialog(
         basket.items.forEach { item ->
             val itemView = inflater.inflate(R.layout.item_basket_detail_line, itemsContainer, false)
             
+            // Quantity badge
             itemView.findViewById<TextView>(R.id.item_quantity)?.text = item.quantity.toString()
+            
+            // Item name
             itemView.findViewById<TextView>(R.id.item_name)?.text = item.item.name ?: "Item"
             
+            // Subtitle - show unit price if quantity > 1
+            val subtitleView = itemView.findViewById<TextView>(R.id.item_subtitle)
+            if (item.quantity > 1) {
+                val unitPrice = if (item.isSatsPrice()) {
+                    "₿${item.item.priceSats} each"
+                } else {
+                    "${currencyManager.formatCurrencyAmount(item.item.getGrossPrice())} each"
+                }
+                subtitleView?.text = unitPrice
+                subtitleView?.visibility = View.VISIBLE
+            } else {
+                subtitleView?.visibility = View.GONE
+            }
+            
+            // Line total
             val priceText = if (item.isSatsPrice()) {
                 "₿${item.getTotalSats()}"
             } else {
@@ -185,10 +229,23 @@ class BasketDetailDialog(
             
             itemsContainer?.addView(itemView)
         }
+    }
 
-        // Total
-        val totalText = if (basket.hasMixedPriceTypes()) {
-            // Show both
+    private fun setupActions() {
+        // View Payment button
+        findViewById<View>(R.id.view_payment_button)?.setOnClickListener {
+            dismiss()
+            onPaymentClick()
+        }
+
+        // Close button (now a TextView)
+        findViewById<View>(R.id.close_button)?.setOnClickListener {
+            dismiss()
+        }
+    }
+
+    private fun formatTotal(): String {
+        return if (basket.hasMixedPriceTypes()) {
             val fiat = currencyManager.formatCurrencyAmount(basket.getTotalFiatPrice())
             val sats = "₿${basket.getTotalSatsPrice()}"
             "$fiat + $sats"
@@ -196,18 +253,6 @@ class BasketDetailDialog(
             "₿${basket.getTotalSatsPrice()}"
         } else {
             currencyManager.formatCurrencyAmount(basket.getTotalFiatPrice())
-        }
-        findViewById<TextView>(R.id.basket_total)?.text = totalText
-
-        // View Payment button
-        findViewById<View>(R.id.view_payment_button)?.setOnClickListener {
-            dismiss()
-            onPaymentClick()
-        }
-
-        // Close button
-        findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
-            dismiss()
         }
     }
 }
