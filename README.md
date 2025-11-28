@@ -1,6 +1,6 @@
-# Shellshock 🥜⚡
+# Numo 🥜⚡
 
-Shellshock is an Android Point-of-Sale application that enables merchants to receive Cashu ecash payments via smartcards. Using NFC technology, it provides a simple way to process transactions with physical cards that store ecash.
+Numo is an Android Point-of-Sale application that enables merchants to receive Cashu ecash payments via smartcards. Using NFC technology, it provides a simple way to process transactions with physical cards that store ecash.
 
 > [!WARNING]
 > This application is **NOT** a wallet. It only acts as a terminal to receive payments and immediately generate redemption tokens. It does not store any tokens. tokens **MUST** be redeemed in a proper Cashu wallet after receiving them, or the funds will be lost.
@@ -11,15 +11,15 @@ The application acts as a simple point-of-sale terminal for Cashu smartcards. Wh
 
 ## How It Works
 
-Using Shellshock is straightforward:
+Using Numo is straightforward:
 
-The merchant enters the desired amount in satoshis using the application's keypad. When a customer presents their Cashu smartcard to the merchant's NFC-enabled Android device, Shellshock communicates with the card to process the payment.
+The merchant enters the desired amount in satoshis using the application's keypad. When a customer presents their Cashu smartcard to the merchant's NFC-enabled Android device, Numo communicates with the card to process the payment.
 
 If the card is PIN-protected, the customer enters their PIN through a secure input dialog. Once verified, the application checks the card's balance and receives the payment. A Cashu token is immediately generated and displayed, which the merchant must copy and redeem in their actual Cashu wallet right away.
 
 The app also includes a balance checking feature to verify a card's available funds, and a top-up function that allows loading Cashu tokens onto cards.
 
-Additionally, Shellshock now simulates a Type 4 Forum tag with a payment request that can be read from or written to using NDEF (NFC Data Exchange Format). This makes the application compatible with web applications like cashu.me that utilize the WebNFC API for NFC interactions. This feature enables seamless communication between web-based Cashu applications and the Shellshock terminal.
+Additionally, Numo now simulates a Type 4 Forum tag with a payment request that can be read from or written to using NDEF (NFC Data Exchange Format). This makes the application compatible with web applications like cashu.me that utilize the WebNFC API for NFC interactions. This feature enables seamless communication between web-based Cashu applications and the Numo terminal.
 
 ## Features
 
@@ -46,8 +46,8 @@ To build the debug version of the app:
 
 ```bash
 # Clone the repository
-git clone https://github.com/lollerfirst/shellshock.git
-cd shellshock
+git clone https://github.com/lollerfirst/numo.git
+cd numo
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -60,11 +60,11 @@ Alternatively, you can open the project in Android Studio and build it using the
 
 ## Smartcard Compatibility
 
-Shellshock interfaces with the [Satocash-Applet](https://github.com/Toporin/Satocash-Applet), a JavaCard applet implementation that enables secure storage and transfer of Cashu tokens on smartcards. The applet must be installed on a compatible JavaCard for the app to function properly. For more information about the smartcard implementation and compatibility, please refer to the Satocash-Applet repository.
+Numo interfaces with the [Satocash-Applet](https://github.com/Toporin/Satocash-Applet), a JavaCard applet implementation that enables secure storage and transfer of Cashu tokens on smartcards. The applet must be installed on a compatible JavaCard for the app to function properly. For more information about the smartcard implementation and compatibility, please refer to the Satocash-Applet repository.
 
 ## NDEF Compatibility
 
-Shellshock now simulates a Type 4 Forum tag with payment requests encoded using NDEF (NFC Data Exchange Format). This feature enables:
+Numo now simulates a Type 4 Forum tag with payment requests encoded using NDEF (NFC Data Exchange Format). This feature enables:
 
 - Reading/writing NDEF messages from web applications that use the WebNFC API
 - Direct compatibility with web-based Cashu applications like cashu.me
@@ -75,7 +75,7 @@ The NDEF implementation follows the NFC Forum specifications, ensuring broad com
 
 ## Getting Started
 
-After building Shellshock, simply install the APK on your device and open the app. You'll be presented with the amount entry screen. No additional setup is required - the app is ready to process payments immediately.
+After building Numo, simply install the APK on your device and open the app. You'll be presented with the amount entry screen. No additional setup is required - the app is ready to process payments immediately.
 
 ## Support
 

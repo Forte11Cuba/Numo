@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "shellshock"
+rootProject.name = "Numo"
 include(":app")

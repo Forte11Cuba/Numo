@@ -1,7 +1,7 @@
 # NFC NDEF Cashu Payment Protocol – Payer (Reader) Specification
 
 This document formalizes the **actual NFC/NDEF protocol implemented in this repo** under
-`app/src/main/java/com/electricdreams/shellshock/ndef/`.
+`app/src/main/java/com/electricdreams/numo/ndef/`.
 
 It describes exactly what a **payer device** (NFC reader/writer) must do on the wire
 (APDUs, payloads, chunking) to:
