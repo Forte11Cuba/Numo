@@ -5,39 +5,30 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="20dp">
+    android:padding="16dp">
 
-    <!-- Contact Icon -->
-    <ImageView
-        android:id="@+id/contact_icon"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginEnd="12dp"
-        android:src="@drawable/ic_contact_email" />
-
-    <!-- Method -->
+    <!-- Method (label on left, takes space to push value right) -->
     <TextView
         android:id="@+id/contact_method"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Email"
-        android:textSize="13sp"
-        android:textColor="@color/color_text_secondary"
-        android:layout_marginEnd="12dp"
-        android:textAllCaps="true"
-        android:letterSpacing="0.05" />
-
-    <!-- Info (takes remaining space) -->
-    <TextView
-        android:id="@+id/contact_info"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:text="Email"
+        android:textSize="15sp"
+        android:textColor="@color/color_text_secondary" />
+
+    <!-- Info (right-aligned value) -->
+    <TextView
+        android:id="@+id/contact_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="200dp"
         android:text="contact@example.com"
         android:textSize="15sp"
         android:textColor="@color/color_text_primary"
+        android:textAlignment="textEnd"
         android:maxLines="1"
-        android:ellipsize="end" />
+        android:ellipsize="middle" />
 
     <!-- Copy Button -->
     <ImageView
@@ -52,5 +43,12 @@
         android:clickable="true"
         android:focusable="true"
         android:contentDescription="@string/mint_details_copy" />
+
+    <!-- Hidden icon view for compatibility -->
+    <ImageView
+        android:id="@+id/contact_icon"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
 </LinearLayout>
