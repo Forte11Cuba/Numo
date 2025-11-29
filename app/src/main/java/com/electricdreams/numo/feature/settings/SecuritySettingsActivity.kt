@@ -10,8 +10,6 @@ import com.electricdreams.numo.R
 import com.electricdreams.numo.feature.pin.PinEntryActivity
 import com.electricdreams.numo.feature.pin.PinManager
 import com.electricdreams.numo.feature.pin.PinSetupActivity
-import com.electricdreams.numo.feature.restore.RestoreWalletActivity
-import com.electricdreams.numo.feature.seed.SeedPhraseActivity
 import com.electricdreams.numo.ui.util.DialogHelper
 
 class SecuritySettingsActivity : AppCompatActivity() {
@@ -35,7 +33,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_security_settings)
 
-        pinManager = PinManager(this)
+        pinManager = PinManager.getInstance(this)
 
         setupPinItem = findViewById(R.id.setup_pin_item)
         changePinItem = findViewById(R.id.change_pin_item)
@@ -47,36 +45,9 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
 
         // Title
-        findViewById<TextView>(R.id.toolbar_title).text = getString(R.string.security_settings_card_title)
+        findViewById<TextView>(R.id.toolbar_title).text = getString(R.string.settings_security_title)
 
-        // PIN info card
-        findViewById<TextView>(R.id.pin_info_title).text = getString(R.string.security_settings_pin_info_title)
-        findViewById<TextView>(R.id.pin_info_body).text = getString(R.string.security_settings_pin_info_body)
-
-        // PIN protection section header
-        findViewById<TextView>(R.id.pin_section_title).text = getString(R.string.security_settings_section_pin_protection)
-
-        // PIN setup item
-        findViewById<TextView>(R.id.setup_pin_title).text = getString(R.string.security_settings_setup_pin_title)
-        findViewById<TextView>(R.id.setup_pin_subtitle).text = getString(R.string.security_settings_setup_pin_subtitle)
-
-        // Change PIN item
-        findViewById<TextView>(R.id.change_pin_title).text = getString(R.string.security_settings_change_pin_title)
-        findViewById<TextView>(R.id.change_pin_subtitle).text = getString(R.string.security_settings_change_pin_subtitle)
-
-        // Remove PIN item
-        findViewById<TextView>(R.id.remove_pin_title).text = getString(R.string.security_settings_remove_pin_title)
-        findViewById<TextView>(R.id.remove_pin_subtitle).text = getString(R.string.security_settings_remove_pin_subtitle)
-
-        // Backup mnemonic section
-        findViewById<TextView>(R.id.backup_section_title).text = getString(R.string.security_settings_section_backup)
-        findViewById<TextView>(R.id.backup_mnemonic_title).text = getString(R.string.security_settings_backup_mnemonic_title)
-        findViewById<TextView>(R.id.backup_mnemonic_subtitle).text = getString(R.string.security_settings_backup_mnemonic_subtitle)
-
-        // Restore wallet section
-        findViewById<TextView>(R.id.restore_section_title).text = getString(R.string.security_settings_section_recovery)
-        findViewById<TextView>(R.id.restore_wallet_title).text = getString(R.string.security_settings_restore_wallet_title)
-        findViewById<TextView>(R.id.restore_wallet_subtitle).text = getString(R.string.security_settings_restore_wallet_subtitle)
+        // Static text is now set directly in XML for cleaner layout; no explicit binding needed here
 
         updatePinUI()
 
