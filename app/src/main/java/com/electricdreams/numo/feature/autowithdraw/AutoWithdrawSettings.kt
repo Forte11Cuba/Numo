@@ -31,9 +31,9 @@ class AutoWithdrawSettingsManager private constructor(private val context: Conte
         
         const val MIN_THRESHOLD_SATS = 1000L // Minimum 1k sats
         const val MAX_THRESHOLD_SATS = 1000000L // Maximum 1M sats
-        const val MIN_WITHDRAW_PERCENTAGE = 90
+        const val MIN_WITHDRAW_PERCENTAGE = 50
         const val MAX_WITHDRAW_PERCENTAGE = 98
-        const val DEFAULT_THRESHOLD_SATS = 10000L // 10k sats
+        const val DEFAULT_THRESHOLD_SATS = 50000L // 50k sats (₿50,000)
         const val DEFAULT_WITHDRAW_PERCENTAGE = 95
 
         @Volatile

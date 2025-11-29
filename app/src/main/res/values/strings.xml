@@ -674,6 +674,9 @@
     <string name="auto_withdraw_progress_sending">Sending to wallet...</string>
     <string name="auto_withdraw_progress_completed">Sent successfully!</string>
     <string name="auto_withdraw_progress_failed">Withdrawal failed</string>
+    
+    <string name="auto_withdraw_settings_title">Auto-Withdraw</string>
+    <string name="auto_withdraw_error_title">Error Details</string>
 
     <!-- Settings - Withdrawals menu item -->
     <string name="settings_item_withdrawals_title">Withdrawals</string>

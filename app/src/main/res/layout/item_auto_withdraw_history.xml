@@ -1,101 +1,164 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="vertical"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
-    android:focusable="true"
-    android:paddingHorizontal="20dp"
-    android:paddingVertical="16dp">
+    android:focusable="true">
 
-    <!-- Status Icon Container -->
-    <FrameLayout
-        android:id="@+id/icon_container"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:background="@drawable/bg_circle"
-        android:backgroundTint="@color/color_bg_secondary"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+    <!-- Main Content Row -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="16dp">
 
+        <!-- Status Icon Container -->
+        <FrameLayout
+            android:id="@+id/icon_container"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_circle"
+            android:backgroundTint="@color/color_bg_secondary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:id="@+id/status_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_lightning_bolt"
+                app:tint="@color/color_success_green" />
+
+        </FrameLayout>
+
+        <!-- Amount -->
+        <TextView
+            android:id="@+id/amount_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="12dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:textColor="@color/color_text_primary"
+            android:textSize="17sp"
+            app:layout_constraintEnd_toStartOf="@id/status_badge"
+            app:layout_constraintStart_toEndOf="@id/icon_container"
+            app:layout_constraintTop_toTopOf="@id/icon_container"
+            tools:text="₿10,000" />
+
+        <!-- Lightning Address -->
+        <TextView
+            android:id="@+id/address_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="12dp"
+            android:ellipsize="middle"
+            android:fontFamily="sans-serif"
+            android:maxLines="1"
+            android:textColor="@color/color_text_secondary"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toStartOf="@id/status_badge"
+            app:layout_constraintStart_toEndOf="@id/icon_container"
+            app:layout_constraintTop_toBottomOf="@id/amount_text"
+            tools:text="user@walletofsatoshi.com" />
+
+        <!-- Timestamp -->
+        <TextView
+            android:id="@+id/timestamp_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="12dp"
+            android:fontFamily="sans-serif"
+            android:textColor="@color/color_text_tertiary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/icon_container"
+            app:layout_constraintTop_toBottomOf="@id/address_text"
+            tools:text="Jan 15, 2025 • 14:30" />
+
+        <!-- Status Badge -->
+        <TextView
+            android:id="@+id/status_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_status_pill_success"
+            android:fontFamily="sans-serif-medium"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:text="Sent"
+            android:textColor="@color/color_success_green"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@id/icon_container"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/icon_container"
+            tools:text="Sent" />
+
+        <!-- Expand indicator for failed items -->
         <ImageView
-            android:id="@+id/status_icon"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_lightning_bolt"
-            app:tint="@color/color_success_green" />
+            android:id="@+id/expand_indicator"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginTop="4dp"
+            android:src="@drawable/ic_chevron_down"
+            android:visibility="gone"
+            app:tint="@color/color_text_tertiary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/status_badge"
+            tools:visibility="visible" />
 
-    </FrameLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Amount -->
-    <TextView
-        android:id="@+id/amount_text"
-        android:layout_width="0dp"
+    <!-- Expandable Error Container -->
+    <LinearLayout
+        android:id="@+id/error_container"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="12dp"
-        android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
-        android:maxLines="1"
-        android:textColor="@color/color_text_primary"
-        android:textSize="17sp"
-        app:layout_constraintEnd_toStartOf="@id/status_badge"
-        app:layout_constraintStart_toEndOf="@id/icon_container"
-        app:layout_constraintTop_toTopOf="@id/icon_container"
-        tools:text="10,000 sats" />
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="16dp"
+        android:visibility="gone"
+        tools:visibility="visible">
 
-    <!-- Lightning Address -->
-    <TextView
-        android:id="@+id/address_text"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginEnd="12dp"
-        android:ellipsize="middle"
-        android:fontFamily="sans-serif"
-        android:maxLines="1"
-        android:textColor="@color/color_text_secondary"
-        android:textSize="14sp"
-        app:layout_constraintEnd_toStartOf="@id/status_badge"
-        app:layout_constraintStart_toEndOf="@id/icon_container"
-        app:layout_constraintTop_toBottomOf="@id/amount_text"
-        tools:text="user@walletofsatoshi.com" />
+        <!-- Error Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="60dp"
+            android:background="@drawable/bg_error_card"
+            android:orientation="vertical"
+            android:padding="12dp">
 
-    <!-- Timestamp -->
-    <TextView
-        android:id="@+id/timestamp_text"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="12dp"
-        android:fontFamily="sans-serif"
-        android:textColor="@color/color_text_tertiary"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/icon_container"
-        app:layout_constraintTop_toBottomOf="@id/address_text"
-        tools:text="Jan 15, 2025 • 14:30" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/auto_withdraw_error_title"
+                android:textColor="@color/color_error"
+                android:textSize="12sp" />
 
-    <!-- Status Badge -->
-    <TextView
-        android:id="@+id/status_badge"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/bg_status_pill_success"
-        android:fontFamily="sans-serif-medium"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="4dp"
-        android:text="Sent"
-        android:textColor="@color/color_success_green"
-        android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="@id/icon_container"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/icon_container"
-        tools:text="Sent" />
+            <TextView
+                android:id="@+id/error_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif"
+                android:textColor="@color/color_text_secondary"
+                android:textSize="13sp"
+                tools:text="Payment failed: Quote state is UNPAID" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

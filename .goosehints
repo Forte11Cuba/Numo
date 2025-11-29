@@ -1,0 +1,3 @@
+- always compile the project after you're done to make sure that everything still works.
+- reuse as much code as you can, avoid code duplication. 
+- design all features so that it looks incredibly good, Apple-like high quality app design with great UX and professional and useful design that makes it easy to use as a person working at a checkout. Apple-like UI design patterns.

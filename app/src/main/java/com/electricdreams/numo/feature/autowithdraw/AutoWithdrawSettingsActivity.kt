@@ -12,21 +12,20 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
-import androidx.appcompat.widget.Toolbar
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.electricdreams.numo.R
 import com.electricdreams.numo.core.model.Amount
 import com.google.android.material.slider.Slider
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,7 +34,8 @@ import java.util.Locale
  * Premium Apple-like settings screen for automatic withdrawals.
  * 
  * Features a beautiful hero section, card-based settings groups,
- * smooth animations, and a clean transaction history.
+ * smooth animations, and a clean transaction history with expandable
+ * error details for failed withdrawals.
  */
 class AutoWithdrawSettingsActivity : AppCompatActivity() {
 
@@ -53,7 +53,7 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
     private lateinit var enableSwitch: SwitchCompat
     private lateinit var enableToggleRow: LinearLayout
     private lateinit var lightningAddressInput: EditText
-    private lateinit var thresholdInput: EditText
+    private lateinit var thresholdDisplay: TextView
     private lateinit var percentageSlider: Slider
     private lateinit var percentageBadge: TextView
 
@@ -65,6 +65,9 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
 
     private var isUpdatingUI = false
     private var iconAnimator: ObjectAnimator? = null
+    
+    // Current threshold value (in sats)
+    private var currentThreshold: Long = AutoWithdrawSettingsManager.DEFAULT_THRESHOLD_SATS
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,7 +76,6 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
         settingsManager = AutoWithdrawSettingsManager.getInstance(this)
         autoWithdrawManager = AutoWithdrawManager.getInstance(this)
 
-        setupToolbar()
         initViews()
         setupListeners()
         loadSettings()
@@ -83,14 +85,12 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
         startEntranceAnimations()
     }
 
-    private fun setupToolbar() {
-        val toolbar: Toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayShowTitleEnabled(false)
-        toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
-    }
-
     private fun initViews() {
+        // Back button (new layout)
+        findViewById<ImageButton>(R.id.back_button).setOnClickListener { 
+            onBackPressedDispatcher.onBackPressed() 
+        }
+
         // Hero section
         heroIcon = findViewById(R.id.hero_icon)
         heroIconContainer = findViewById(R.id.icon_container)
@@ -104,7 +104,7 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
 
         // Config inputs
         lightningAddressInput = findViewById(R.id.lightning_address_input)
-        thresholdInput = findViewById(R.id.threshold_input)
+        thresholdDisplay = findViewById(R.id.threshold_display)
         percentageSlider = findViewById(R.id.percentage_slider)
         percentageBadge = findViewById(R.id.percentage_badge)
 
@@ -144,18 +144,10 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
             }
         })
 
-        // Threshold input
-        thresholdInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (!isUpdatingUI) {
-                    val threshold = s?.toString()?.replace(",", "")?.toLongOrNull()
-                        ?: AutoWithdrawSettingsManager.DEFAULT_THRESHOLD_SATS
-                    settingsManager.setDefaultThreshold(threshold)
-                }
-            }
-        })
+        // Threshold display - click to show edit dialog
+        thresholdDisplay.setOnClickListener {
+            showThresholdEditDialog()
+        }
 
         // Percentage slider with haptic feedback
         percentageSlider.addOnChangeListener { slider, value, fromUser ->
@@ -169,6 +161,46 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
             }
         }
     }
+    
+    private fun showThresholdEditDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_threshold_edit, null)
+        val editText = dialogView.findViewById<EditText>(R.id.threshold_edit_text)
+        
+        // Pre-fill with current value (without commas)
+        editText.setText(currentThreshold.toString())
+        editText.setSelection(editText.text.length)
+        
+        val dialog = AlertDialog.Builder(this, R.style.Theme_Numo_Dialog)
+            .setTitle(R.string.auto_withdraw_threshold_title)
+            .setView(dialogView)
+            .setPositiveButton(R.string.common_save) { _, _ ->
+                val newThreshold = editText.text.toString().replace(",", "").toLongOrNull()
+                    ?: AutoWithdrawSettingsManager.DEFAULT_THRESHOLD_SATS
+                currentThreshold = newThreshold.coerceIn(
+                    AutoWithdrawSettingsManager.MIN_THRESHOLD_SATS,
+                    AutoWithdrawSettingsManager.MAX_THRESHOLD_SATS
+                )
+                settingsManager.setDefaultThreshold(currentThreshold)
+                updateThresholdDisplay()
+            }
+            .setNegativeButton(R.string.common_cancel, null)
+            .create()
+        
+        dialog.show()
+        
+        // Show keyboard
+        editText.requestFocus()
+        editText.postDelayed({
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            imm?.showSoftInput(editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }, 300)
+    }
+    
+    private fun updateThresholdDisplay() {
+        // Use Amount class to format with ₿ symbol
+        val amount = Amount(currentThreshold, Amount.Currency.BTC)
+        thresholdDisplay.text = amount.toString()
+    }
 
     private fun loadSettings() {
         isUpdatingUI = true
@@ -180,8 +212,8 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
 
         lightningAddressInput.setText(settingsManager.getDefaultLightningAddress())
         
-        val threshold = settingsManager.getDefaultThreshold()
-        thresholdInput.setText(NumberFormat.getNumberInstance().format(threshold))
+        currentThreshold = settingsManager.getDefaultThreshold()
+        updateThresholdDisplay()
 
         val percentage = settingsManager.getDefaultPercentage()
         percentageSlider.value = percentage.toFloat()
@@ -245,12 +277,13 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
         
         // Animate alpha change
         lightningAddressInput.animate().alpha(alpha).setDuration(200).start()
-        thresholdInput.animate().alpha(alpha).setDuration(200).start()
+        thresholdDisplay.animate().alpha(alpha).setDuration(200).start()
         percentageSlider.animate().alpha(alpha).setDuration(200).start()
         percentageBadge.animate().alpha(alpha).setDuration(200).start()
         
         lightningAddressInput.isEnabled = enabled
-        thresholdInput.isEnabled = enabled
+        thresholdDisplay.isEnabled = enabled
+        thresholdDisplay.isClickable = enabled
         percentageSlider.isEnabled = enabled
     }
 
@@ -331,11 +364,14 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
     }
 
     /**
-     * Premium adapter for displaying auto-withdraw history.
+     * Premium adapter for displaying auto-withdraw history with expandable error details.
      */
     private inner class AutoWithdrawHistoryAdapter(
         private val entries: List<AutoWithdrawHistoryEntry>
     ) : RecyclerView.Adapter<AutoWithdrawHistoryAdapter.ViewHolder>() {
+        
+        // Track expanded state for each item
+        private val expandedItems = mutableSetOf<String>()
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val iconContainer: FrameLayout = view.findViewById(R.id.icon_container)
@@ -344,6 +380,9 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
             val addressText: TextView = view.findViewById(R.id.address_text)
             val timestampText: TextView = view.findViewById(R.id.timestamp_text)
             val statusBadge: TextView = view.findViewById(R.id.status_badge)
+            val expandIndicator: ImageView = view.findViewById(R.id.expand_indicator)
+            val errorContainer: LinearLayout = view.findViewById(R.id.error_container)
+            val errorText: TextView = view.findViewById(R.id.error_text)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -354,9 +393,9 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val entry = entries[position]
 
-            // Format amount with locale-aware number formatting
-            val formattedAmount = NumberFormat.getNumberInstance().format(entry.amountSats) + " sats"
-            holder.amountText.text = formattedAmount
+            // Format amount using Amount class with ₿ symbol
+            val amount = Amount(entry.amountSats, Amount.Currency.BTC)
+            holder.amountText.text = amount.toString()
 
             // Truncate long addresses
             holder.addressText.text = entry.lightningAddress
@@ -374,6 +413,8 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
                     holder.statusBadge.text = getString(R.string.auto_withdraw_status_completed)
                     holder.statusBadge.setTextColor(ContextCompat.getColor(this@AutoWithdrawSettingsActivity, R.color.color_success_green))
                     holder.statusBadge.background = ContextCompat.getDrawable(this@AutoWithdrawSettingsActivity, R.drawable.bg_status_pill_success)
+                    holder.expandIndicator.visibility = View.GONE
+                    holder.errorContainer.visibility = View.GONE
                 }
                 AutoWithdrawHistoryEntry.STATUS_PENDING -> {
                     holder.statusIcon.setImageResource(R.drawable.ic_pending)
@@ -382,6 +423,8 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
                     holder.statusBadge.text = getString(R.string.auto_withdraw_status_pending)
                     holder.statusBadge.setTextColor(ContextCompat.getColor(this@AutoWithdrawSettingsActivity, R.color.color_warning))
                     holder.statusBadge.background = ContextCompat.getDrawable(this@AutoWithdrawSettingsActivity, R.drawable.bg_status_pill_pending)
+                    holder.expandIndicator.visibility = View.GONE
+                    holder.errorContainer.visibility = View.GONE
                 }
                 AutoWithdrawHistoryEntry.STATUS_FAILED -> {
                     holder.statusIcon.setImageResource(R.drawable.ic_close)
@@ -390,6 +433,26 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
                     holder.statusBadge.text = getString(R.string.auto_withdraw_status_failed)
                     holder.statusBadge.setTextColor(ContextCompat.getColor(this@AutoWithdrawSettingsActivity, R.color.color_error))
                     holder.statusBadge.background = ContextCompat.getDrawable(this@AutoWithdrawSettingsActivity, R.drawable.bg_status_pill_error)
+                    
+                    // Show expand indicator if there's an error message
+                    val hasError = !entry.errorMessage.isNullOrBlank()
+                    holder.expandIndicator.visibility = if (hasError) View.VISIBLE else View.GONE
+                    
+                    // Set error message
+                    holder.errorText.text = entry.errorMessage ?: ""
+                    
+                    // Check if this item is expanded
+                    val isExpanded = expandedItems.contains(entry.id)
+                    updateExpandState(holder, isExpanded, animate = false)
+                    
+                    // Set click listener to toggle expansion
+                    if (hasError) {
+                        holder.itemView.setOnClickListener {
+                            toggleExpand(entry.id, holder)
+                        }
+                    } else {
+                        holder.itemView.setOnClickListener(null)
+                    }
                 }
             }
 
@@ -400,6 +463,56 @@ class AutoWithdrawSettingsActivity : AppCompatActivity() {
                 .setStartDelay((position * 50).toLong())
                 .setDuration(200)
                 .start()
+        }
+        
+        private fun toggleExpand(entryId: String, holder: ViewHolder) {
+            val isCurrentlyExpanded = expandedItems.contains(entryId)
+            if (isCurrentlyExpanded) {
+                expandedItems.remove(entryId)
+            } else {
+                expandedItems.add(entryId)
+            }
+            updateExpandState(holder, !isCurrentlyExpanded, animate = true)
+        }
+        
+        private fun updateExpandState(holder: ViewHolder, isExpanded: Boolean, animate: Boolean) {
+            if (animate) {
+                // Rotate expand indicator
+                val targetRotation = if (isExpanded) 180f else 0f
+                holder.expandIndicator.animate()
+                    .rotation(targetRotation)
+                    .setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
+                
+                // Animate error container
+                if (isExpanded) {
+                    holder.errorContainer.visibility = View.VISIBLE
+                    holder.errorContainer.alpha = 0f
+                    holder.errorContainer.translationY = -10f
+                    holder.errorContainer.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(200)
+                        .setInterpolator(AccelerateDecelerateInterpolator())
+                        .start()
+                } else {
+                    holder.errorContainer.animate()
+                        .alpha(0f)
+                        .translationY(-10f)
+                        .setDuration(150)
+                        .setInterpolator(AccelerateDecelerateInterpolator())
+                        .withEndAction {
+                            holder.errorContainer.visibility = View.GONE
+                        }
+                        .start()
+                }
+            } else {
+                // Instant update without animation
+                holder.expandIndicator.rotation = if (isExpanded) 180f else 0f
+                holder.errorContainer.visibility = if (isExpanded) View.VISIBLE else View.GONE
+                holder.errorContainer.alpha = if (isExpanded) 1f else 0f
+            }
         }
 
         override fun getItemCount() = entries.size
