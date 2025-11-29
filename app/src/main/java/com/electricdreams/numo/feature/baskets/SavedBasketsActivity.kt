@@ -15,6 +15,7 @@ import com.electricdreams.numo.R
 import com.electricdreams.numo.core.model.SavedBasket
 import com.electricdreams.numo.core.util.CurrencyManager
 import com.electricdreams.numo.core.util.SavedBasketManager
+import com.electricdreams.numo.feature.enableEdgeToEdgeWithPill
 
 /**
  * Activity for viewing and managing saved baskets (tabs/tables).
@@ -37,6 +38,9 @@ class SavedBasketsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_saved_baskets)
+
+        // Match AutoWithdrawSettingsActivity: draw under system bars so nav pill floats
+        enableEdgeToEdgeWithPill(this, lightNavIcons = true)
 
         initializeManagers()
         initializeViews()

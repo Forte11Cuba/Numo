@@ -18,6 +18,7 @@ import com.electricdreams.numo.core.util.SavedBasketManager
 import com.electricdreams.numo.feature.history.PaymentsHistoryActivity
 import com.electricdreams.numo.feature.history.TransactionDetailActivity
 import com.electricdreams.numo.ui.util.DialogHelper
+import com.electricdreams.numo.feature.enableEdgeToEdgeWithPill
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,6 +40,9 @@ class BasketArchiveActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_basket_archive)
+
+        // Match AutoWithdrawSettingsActivity: draw under system bars so nav pill floats
+        enableEdgeToEdgeWithPill(this, lightNavIcons = true)
 
         initializeManagers()
         initializeViews()

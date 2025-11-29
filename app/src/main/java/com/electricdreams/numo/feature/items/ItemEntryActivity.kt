@@ -19,6 +19,7 @@ import com.electricdreams.numo.core.model.PriceType
 import com.electricdreams.numo.core.util.CurrencyManager
 import com.electricdreams.numo.core.util.ItemManager
 import com.electricdreams.numo.feature.items.handlers.*
+import com.electricdreams.numo.feature.enableEdgeToEdgeWithPill
 
 /**
  * Activity for adding or editing catalog items.
@@ -81,6 +82,9 @@ class ItemEntryActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_item_entry)
+
+        // Match AutoWithdrawSettingsActivity: draw under system bars so nav pill floats
+        enableEdgeToEdgeWithPill(this, lightNavIcons = true)
 
         initializeManagers()
         initializeViews()

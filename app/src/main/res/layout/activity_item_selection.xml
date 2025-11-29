@@ -5,8 +5,7 @@
     android:id="@+id/coordinator_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/color_bg_white"
-    android:fitsSystemWindows="true">
+    android:background="@color/color_bg_white">
 
     <!-- Main Content: fixed top bar + scrollable items -->
     <LinearLayout
