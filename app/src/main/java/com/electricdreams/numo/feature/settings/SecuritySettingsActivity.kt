@@ -7,27 +7,20 @@ import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.electricdreams.numo.R
-import com.electricdreams.numo.ui.util.DialogHelper
 import com.electricdreams.numo.feature.pin.PinEntryActivity
 import com.electricdreams.numo.feature.pin.PinManager
 import com.electricdreams.numo.feature.pin.PinSetupActivity
+import com.electricdreams.numo.feature.restore.RestoreWalletActivity
+import com.electricdreams.numo.feature.seed.SeedPhraseActivity
+import com.electricdreams.numo.ui.util.DialogHelper
 
-/**
- * Security & Privacy settings screen.
- * Provides access to:
- * - PIN Protection: Set/change/remove PIN for sensitive features
- * - Backup Mnemonic: View and copy the 12-word seed phrase
- * - Restore Wallet: Recover wallet from an existing seed phrase
- */
 class SecuritySettingsActivity : AppCompatActivity() {
 
     private lateinit var pinManager: PinManager
-    
+
     private lateinit var setupPinItem: View
     private lateinit var changePinItem: View
     private lateinit var removePinItem: View
-    private lateinit var pinTitle: TextView
-    private lateinit var pinSubtitle: TextView
 
     private var pendingAction: PendingAction? = null
 
@@ -42,48 +35,75 @@ class SecuritySettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_security_settings)
 
-        pinManager = PinManager.getInstance(this)
-        initViews()
-        setupListeners()
-        updatePinUI()
-    }
+        pinManager = PinManager(this)
 
-    override fun onResume() {
-        super.onResume()
-        updatePinUI()
-    }
-
-    private fun initViews() {
         setupPinItem = findViewById(R.id.setup_pin_item)
         changePinItem = findViewById(R.id.change_pin_item)
         removePinItem = findViewById(R.id.remove_pin_item)
-        pinTitle = findViewById(R.id.pin_title)
-        pinSubtitle = findViewById(R.id.pin_subtitle)
-    }
 
-    private fun setupListeners() {
-        findViewById<View>(R.id.back_button).setOnClickListener { 
-            finish() 
+        // Back button
+        findViewById<View>(R.id.back_button).setOnClickListener {
+            finish()
         }
 
-        // PIN setup/change items
+        // Title
+        findViewById<TextView>(R.id.toolbar_title).text = getString(R.string.security_settings_card_title)
+
+        // PIN info card
+        findViewById<TextView>(R.id.pin_info_title).text = getString(R.string.security_settings_pin_info_title)
+        findViewById<TextView>(R.id.pin_info_body).text = getString(R.string.security_settings_pin_info_body)
+
+        // PIN protection section header
+        findViewById<TextView>(R.id.pin_section_title).text = getString(R.string.security_settings_section_pin_protection)
+
+        // PIN setup item
+        findViewById<TextView>(R.id.setup_pin_title).text = getString(R.string.security_settings_setup_pin_title)
+        findViewById<TextView>(R.id.setup_pin_subtitle).text = getString(R.string.security_settings_setup_pin_subtitle)
+
+        // Change PIN item
+        findViewById<TextView>(R.id.change_pin_title).text = getString(R.string.security_settings_change_pin_title)
+        findViewById<TextView>(R.id.change_pin_subtitle).text = getString(R.string.security_settings_change_pin_subtitle)
+
+        // Remove PIN item
+        findViewById<TextView>(R.id.remove_pin_title).text = getString(R.string.security_settings_remove_pin_title)
+        findViewById<TextView>(R.id.remove_pin_subtitle).text = getString(R.string.security_settings_remove_pin_subtitle)
+
+        // Backup mnemonic section
+        findViewById<TextView>(R.id.backup_section_title).text = getString(R.string.security_settings_section_backup)
+        findViewById<TextView>(R.id.backup_mnemonic_title).text = getString(R.string.security_settings_backup_mnemonic_title)
+        findViewById<TextView>(R.id.backup_mnemonic_subtitle).text = getString(R.string.security_settings_backup_mnemonic_subtitle)
+
+        // Restore wallet section
+        findViewById<TextView>(R.id.restore_section_title).text = getString(R.string.security_settings_section_recovery)
+        findViewById<TextView>(R.id.restore_wallet_title).text = getString(R.string.security_settings_restore_wallet_title)
+        findViewById<TextView>(R.id.restore_wallet_subtitle).text = getString(R.string.security_settings_restore_wallet_subtitle)
+
+        updatePinUI()
+
+        // Setup PIN
         setupPinItem.setOnClickListener {
             startActivityForResult(
-                Intent(this, PinSetupActivity::class.java).apply {
-                    putExtra(PinSetupActivity.EXTRA_MODE, PinSetupActivity.MODE_CREATE)
-                },
+                Intent(this, PinSetupActivity::class.java),
                 REQUEST_PIN_SETUP
             )
         }
 
+        // Change PIN - requires PIN verification
         changePinItem.setOnClickListener {
-            pendingAction = PendingAction.CHANGE_PIN
-            requestPinVerification()
+            if (pinManager.isPinEnabled()) {
+                pendingAction = PendingAction.CHANGE_PIN
+                requestPinVerification()
+            } else {
+                openChangePin()
+            }
         }
 
+        // Remove PIN - requires PIN verification
         removePinItem.setOnClickListener {
-            pendingAction = PendingAction.REMOVE_PIN
-            requestPinVerification()
+            if (pinManager.isPinEnabled()) {
+                pendingAction = PendingAction.REMOVE_PIN
+                requestPinVerification()
+            }
         }
 
         // Backup mnemonic - requires PIN if set
@@ -125,8 +145,8 @@ class SecuritySettingsActivity : AppCompatActivity() {
 
     private fun requestPinVerification() {
         val intent = Intent(this, PinEntryActivity::class.java).apply {
-            putExtra(PinEntryActivity.EXTRA_TITLE, "Enter PIN")
-            putExtra(PinEntryActivity.EXTRA_SUBTITLE, "Verify your identity to continue")
+            putExtra(PinEntryActivity.EXTRA_TITLE, getString(R.string.security_settings_enter_pin_title))
+            putExtra(PinEntryActivity.EXTRA_SUBTITLE, getString(R.string.security_settings_enter_pin_subtitle))
         }
         startActivityForResult(intent, REQUEST_PIN_VERIFY)
     }
@@ -152,10 +172,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
         DialogHelper.showConfirmation(
             context = this,
             config = DialogHelper.ConfirmationConfig(
-                title = "Remove PIN?",
-                message = "This will disable PIN protection. Anyone with access to this device will be able to access sensitive features like withdrawing funds and viewing your seed phrase.",
-                confirmText = "Remove PIN",
-                cancelText = "Cancel",
+                title = getString(R.string.security_settings_remove_pin_dialog_title),
+                message = getString(R.string.security_settings_remove_pin_dialog_message),
+                confirmText = getString(R.string.security_settings_remove_pin_confirm),
+                cancelText = getString(R.string.common_cancel),
                 isDestructive = true,
                 onConfirm = {
                     pinManager.removePin()

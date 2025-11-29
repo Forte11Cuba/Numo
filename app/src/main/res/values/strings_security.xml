@@ -18,7 +18,7 @@
     <!-- Security &amp; Privacy screen: PIN protection section -->
     <string name="security_settings_section_pin_protection">PIN Protection</string>
     <string name="security_settings_pin_info_title">Employee Mode</string>
-    <string name="security_settings_pin_info_body">Set a PIN to let employees use Numo safely. They can accept payments and manage transactions, but won\'t be able to withdraw funds, access mints, view your seed phrase, or modify item prices.</string>
+    <string name="security_settings_pin_info_body">Set a PIN to let employees use Numo safely. They can accept payments and manage transactions, but won&apos;t be able to withdraw funds, access mints, view your seed phrase, or modify item prices.</string>
 
     <!-- Security &amp; Privacy screen: PIN setup row -->
     <string name="security_settings_setup_pin_title">Set Up PIN</string>
@@ -31,4 +31,11 @@
     <!-- Security &amp; Privacy screen: Remove PIN row -->
     <string name="security_settings_remove_pin_title">Remove PIN</string>
     <string name="security_settings_remove_pin_subtitle">Disable PIN protection</string>
+
+    <!-- Security &amp; Privacy screen: dialogs & actions -->
+    <string name="security_settings_enter_pin_title">Enter PIN</string>
+    <string name="security_settings_enter_pin_subtitle">Verify your identity to continue</string>
+    <string name="security_settings_remove_pin_dialog_title">Remove PIN?</string>
+    <string name="security_settings_remove_pin_dialog_message">This will disable PIN protection. Anyone with access to this device will be able to access sensitive features like withdrawing funds and viewing your seed phrase.</string>
+    <string name="security_settings_remove_pin_confirm">Remove</string>
 </resources>
