@@ -31,8 +31,6 @@ import com.electricdreams.numo.ui.util.QrCodeGenerator
 import com.electricdreams.numo.feature.autowithdraw.AutoWithdrawManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import androidx.lifecycle.lifecycleScope
 
 class PaymentRequestActivity : AppCompatActivity() {
 
@@ -802,11 +800,8 @@ class PaymentRequestActivity : AppCompatActivity() {
         // Archive the basket now that payment is complete
         markBasketAsPaid()
         
-        // Check for auto-withdrawal after successful payment
-        lifecycleScope.launch {
-            AutoWithdrawManager.getInstance(this@PaymentRequestActivity)
-                .onPaymentReceived(token, lightningMintUrl)
-        }
+        // Check for auto-withdrawal after successful payment (runs in background, survives activity destruction)
+        AutoWithdrawManager.getInstance(this).onPaymentReceived(token, lightningMintUrl)
         
         // Play success sound
         try {

@@ -128,19 +128,26 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback,
         autoWithdrawManager = AutoWithdrawManager.getInstance(this)
         autoWithdrawManager.setProgressListener(this)
 
-        // Initialize progress views (Dynamic Island style). All lookups are safe and
-        // optional so a missing include won't crash the app on startup.
-        progressContainer = findViewById(R.id.auto_withdraw_progress_container)
-        dynamicIsland = findViewById(R.id.dynamic_island)
-        progressSpinner = findViewById(R.id.progress_spinner)
-        successIcon = findViewById(R.id.success_icon)
-        errorIcon = findViewById(R.id.error_icon)
-        progressTitle = findViewById(R.id.progress_title)
-        progressSubtitle = findViewById(R.id.progress_subtitle)
-        progressAmount = findViewById(R.id.progress_amount)
+        // Initialize progress views (Dynamic Island style). We scope lookups through the
+        // included view root to avoid any surprises with the view hierarchy.
+        val progressRoot: View? = findViewById(R.id.auto_withdraw_progress)
+
+        if (progressRoot == null) {
+            Log.w(TAG, "Auto-withdraw include view not found; Dynamic Island UI disabled for this layout")
+            return
+        }
+
+        progressContainer = progressRoot.findViewById(R.id.auto_withdraw_progress_container) ?: progressRoot
+        dynamicIsland = progressRoot.findViewById(R.id.dynamic_island)
+        progressSpinner = progressRoot.findViewById(R.id.progress_spinner)
+        successIcon = progressRoot.findViewById(R.id.success_icon)
+        errorIcon = progressRoot.findViewById(R.id.error_icon)
+        progressTitle = progressRoot.findViewById(R.id.progress_title)
+        progressSubtitle = progressRoot.findViewById(R.id.progress_subtitle)
+        progressAmount = progressRoot.findViewById(R.id.progress_amount)
 
         if (progressContainer == null || dynamicIsland == null) {
-            Log.w(TAG, "Auto-withdraw progress views not found; Dynamic Island UI disabled for this layout")
+            Log.w(TAG, "Auto-withdraw progress views not found inside include; Dynamic Island UI disabled for this layout")
             return
         }
 

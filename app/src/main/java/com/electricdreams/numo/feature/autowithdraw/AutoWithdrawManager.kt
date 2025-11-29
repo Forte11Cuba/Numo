@@ -8,7 +8,10 @@ import com.electricdreams.numo.core.util.MintManager
 import com.electricdreams.numo.feature.history.PaymentsHistoryActivity
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.cashudevkit.MintUrl
 import org.cashudevkit.QuoteState
@@ -83,6 +86,13 @@ class AutoWithdrawManager private constructor(private val context: Context) {
     
     @Volatile
     private var isWithdrawInProgress = false
+    
+    /**
+     * Application-scoped coroutine scope for background withdrawal operations.
+     * Uses SupervisorJob so individual withdrawal failures don't cancel the scope.
+     * This scope survives activity lifecycle changes.
+     */
+    private val withdrawalScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     /**
      * Set a progress listener for UI updates.
@@ -100,10 +110,14 @@ class AutoWithdrawManager private constructor(private val context: Context) {
      * Called after a successful payment to check if auto-withdrawal should be triggered.
      * This is the main entry point for triggering auto-withdrawals from payment flows.
      * 
+     * This method launches the withdrawal check in a background coroutine that survives
+     * activity lifecycle changes. The withdrawal will continue even if the calling
+     * activity is destroyed.
+     * 
      * @param token The Cashu token received (can be empty for Lightning payments)
      * @param lightningMintUrl The mint URL for Lightning payments (used when token is empty)
      */
-    suspend fun onPaymentReceived(token: String, lightningMintUrl: String?) {
+    fun onPaymentReceived(token: String, lightningMintUrl: String?) {
         // Determine the mint URL
         val mintUrl: String? = if (token.isNotEmpty()) {
             try {
@@ -118,15 +132,20 @@ class AutoWithdrawManager private constructor(private val context: Context) {
         
         Log.d(TAG, "💰 Payment received, checking for auto-withdrawal. mintUrl=$mintUrl")
         
-        if (mintUrl != null) {
+        if (mintUrl == null) {
+            Log.w(TAG, "⚠️ No mint URL available, skipping auto-withdrawal check")
+            return
+        }
+        
+        // Launch in application-scoped coroutine that survives activity destruction
+        withdrawalScope.launch {
             try {
+                Log.d(TAG, "🚀 Starting auto-withdrawal check in background scope")
                 checkAndTriggerWithdrawals(mintUrl)
                 Log.d(TAG, "✅ Auto-withdrawal check completed")
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error checking auto-withdrawals", e)
             }
-        } else {
-            Log.w(TAG, "⚠️ No mint URL available, skipping auto-withdrawal check")
         }
     }
 
@@ -207,14 +226,22 @@ class AutoWithdrawManager private constructor(private val context: Context) {
      * Execute a withdrawal for a specific mint.
      */
     private suspend fun executeWithdrawal(mintUrl: String, currentBalance: Long) {
-        if (isWithdrawInProgress) return
+        if (isWithdrawInProgress) {
+            Log.w(TAG, "executeWithdrawal called but already in progress, skipping")
+            return
+        }
         isWithdrawInProgress = true
 
         val settings = settingsManager.getMintSettings(mintUrl)
         val withdrawAmount = settingsManager.calculateWithdrawAmount(mintUrl, currentBalance)
         val lightningAddress = settings.lightningAddress
 
-        Log.d(TAG, "Triggering auto-withdrawal from $mintUrl: $withdrawAmount sats to $lightningAddress")
+        Log.d(TAG, "🚀 STARTING AUTO-WITHDRAWAL:")
+        Log.d(TAG, "   Mint: $mintUrl")
+        Log.d(TAG, "   Current balance: $currentBalance sats")
+        Log.d(TAG, "   Withdraw amount: $withdrawAmount sats (${settings.withdrawPercentage}%)")
+        Log.d(TAG, "   Lightning address: $lightningAddress")
+        Log.d(TAG, "   Threshold: ${settings.thresholdSats} sats")
 
         withContext(Dispatchers.Main) {
             progressListener?.onWithdrawStarted(mintUrl, withdrawAmount, lightningAddress)
@@ -230,31 +257,51 @@ class AutoWithdrawManager private constructor(private val context: Context) {
         )
 
         try {
+            Log.d(TAG, "📋 Step 1: Getting wallet instance...")
             val wallet = CashuWalletManager.getWallet()
             if (wallet == null) {
                 throw Exception("Wallet not initialized")
             }
+            Log.d(TAG, "✅ Wallet instance obtained")
 
             // Get melt quote for Lightning address
+            Log.d(TAG, "📋 Step 2: Getting melt quote...")
             withContext(Dispatchers.Main) {
                 progressListener?.onWithdrawProgress("Quote", "Getting Lightning quote...")
             }
 
             val amountMsat = withdrawAmount * 1000
+            Log.d(TAG, "   Requesting quote for $withdrawAmount sats ($amountMsat msat) to $lightningAddress")
+            
             val meltQuote = withContext(Dispatchers.IO) {
-                wallet.meltLightningAddressQuote(MintUrl(mintUrl), lightningAddress, amountMsat.toULong())
+                Log.d(TAG, "   Making CDK call: wallet.meltLightningAddressQuote()")
+                try {
+                    val quote = wallet.meltLightningAddressQuote(MintUrl(mintUrl), lightningAddress, amountMsat.toULong())
+                    Log.d(TAG, "   ✅ Quote received: id=${quote.id}")
+                    quote
+                } catch (e: Exception) {
+                    Log.e(TAG, "   ❌ Quote failed: ${e.message}", e)
+                    throw e
+                }
             }
 
             val quoteAmount = meltQuote.amount.value.toLong()
             val feeReserve = meltQuote.feeReserve.value.toLong()
             val totalRequired = quoteAmount + feeReserve
 
-            Log.d(TAG, "Melt quote: amount=$quoteAmount, fee=$feeReserve, total=$totalRequired")
+            Log.d(TAG, "✅ Melt quote received:")
+            Log.d(TAG, "   Quote ID: ${meltQuote.id}")
+            Log.d(TAG, "   Amount: $quoteAmount sats")
+            Log.d(TAG, "   Fee reserve: $feeReserve sats")
+            Log.d(TAG, "   Total required: $totalRequired sats")
+            Log.d(TAG, "   Request (BOLT11): ${meltQuote.request}")
 
             // Check if we have enough balance
             if (totalRequired > currentBalance) {
-                throw Exception("Insufficient balance for withdrawal + fees")
+                Log.e(TAG, "❌ Insufficient balance: need $totalRequired sats, have $currentBalance sats")
+                throw Exception("Insufficient balance for withdrawal + fees (need $totalRequired, have $currentBalance)")
             }
+            Log.d(TAG, "✅ Balance check passed: $currentBalance >= $totalRequired")
 
             // Update history entry with quote info
             historyEntry = historyEntry.copy(
@@ -263,6 +310,7 @@ class AutoWithdrawManager private constructor(private val context: Context) {
             )
 
             // Create pending payment history entry for the withdrawal
+            Log.d(TAG, "📋 Step 3: Creating payment history entry...")
             val paymentHistoryEntry = PaymentHistoryEntry(
                 token = "",
                 amount = -withdrawAmount, // Negative for outgoing
@@ -283,24 +331,47 @@ class AutoWithdrawManager private constructor(private val context: Context) {
             withContext(Dispatchers.Main) {
                 addPaymentToHistory(paymentHistoryEntry)
             }
+            Log.d(TAG, "✅ Payment history entry created: ${paymentHistoryEntry.id}")
 
             // Execute melt
+            Log.d(TAG, "📋 Step 4: Executing melt operation...")
             withContext(Dispatchers.Main) {
                 progressListener?.onWithdrawProgress("Sending", "Sending payment...")
             }
 
             val melted = withContext(Dispatchers.IO) {
-                wallet.meltWithMint(MintUrl(mintUrl), meltQuote.id)
+                Log.d(TAG, "   Making CDK call: wallet.meltWithMint()")
+                try {
+                    val result = wallet.meltWithMint(MintUrl(mintUrl), meltQuote.id)
+                    Log.d(TAG, "   ✅ Melt completed")
+                    result
+                } catch (e: Exception) {
+                    Log.e(TAG, "   ❌ Melt failed: ${e.message}", e)
+                    throw e
+                }
             }
 
             // Check melt state
+            Log.d(TAG, "📋 Step 5: Checking final quote state...")
             val finalQuote = withContext(Dispatchers.IO) {
-                wallet.checkMeltQuote(MintUrl(mintUrl), meltQuote.id)
+                Log.d(TAG, "   Making CDK call: wallet.checkMeltQuote()")
+                try {
+                    val quote = wallet.checkMeltQuote(MintUrl(mintUrl), meltQuote.id)
+                    Log.d(TAG, "   ✅ Final quote state: ${quote.state}")
+                    quote
+                } catch (e: Exception) {
+                    Log.e(TAG, "   ❌ Quote check failed: ${e.message}", e)
+                    throw e
+                }
             }
 
             when (finalQuote.state) {
                 QuoteState.PAID -> {
-                    Log.d(TAG, "Auto-withdrawal successful!")
+                    Log.d(TAG, "🎉 AUTO-WITHDRAWAL SUCCESSFUL!")
+                    Log.d(TAG, "   Amount withdrawn: $withdrawAmount sats")
+                    Log.d(TAG, "   Fee paid: $feeReserve sats")
+                    Log.d(TAG, "   Lightning address: $lightningAddress")
+                    
                     historyEntry = historyEntry.copy(status = AutoWithdrawHistoryEntry.STATUS_COMPLETED)
                     
                     // Update payment history entry
@@ -310,7 +381,7 @@ class AutoWithdrawManager private constructor(private val context: Context) {
                     }
                 }
                 QuoteState.PENDING -> {
-                    Log.d(TAG, "Auto-withdrawal pending")
+                    Log.d(TAG, "⏳ Auto-withdrawal pending (waiting for Lightning payment)")
                     historyEntry = historyEntry.copy(
                         status = AutoWithdrawHistoryEntry.STATUS_PENDING,
                         errorMessage = "Payment pending - check back later"
@@ -319,13 +390,28 @@ class AutoWithdrawManager private constructor(private val context: Context) {
                         progressListener?.onWithdrawProgress("Pending", "Payment is pending...")
                     }
                 }
+                QuoteState.UNPAID -> {
+                    Log.e(TAG, "❌ Auto-withdrawal failed: Quote is UNPAID")
+                    throw Exception("Payment failed: Quote state is UNPAID")
+                }
                 else -> {
-                    throw Exception("Payment failed: ${finalQuote.state}")
+                    Log.e(TAG, "❌ Auto-withdrawal failed: Unknown quote state ${finalQuote.state}")
+                    throw Exception("Payment failed: Unknown quote state ${finalQuote.state}")
                 }
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Auto-withdrawal failed", e)
+            Log.e(TAG, "💥 AUTO-WITHDRAWAL FAILED:")
+            Log.e(TAG, "   Mint: $mintUrl")
+            Log.e(TAG, "   Amount: $withdrawAmount sats")
+            Log.e(TAG, "   Error: ${e.message}")
+            Log.e(TAG, "   Exception type: ${e.javaClass.simpleName}")
+            
+            // If it's a JobCancellationException, log that specifically
+            if (e is kotlinx.coroutines.CancellationException) {
+                Log.e(TAG, "   🚫 Withdrawal was cancelled (likely due to scope cancellation)")
+            }
+            
             historyEntry = historyEntry.copy(
                 status = AutoWithdrawHistoryEntry.STATUS_FAILED,
                 errorMessage = e.message
@@ -334,9 +420,11 @@ class AutoWithdrawManager private constructor(private val context: Context) {
                 progressListener?.onWithdrawFailed(mintUrl, e.message ?: "Unknown error")
             }
         } finally {
+            Log.d(TAG, "🏁 Withdrawal finished, saving to history...")
             // Save to auto-withdraw history
             addToHistory(historyEntry)
             isWithdrawInProgress = false
+            Log.d(TAG, "🏁 Auto-withdrawal process completed")
         }
     }
 
