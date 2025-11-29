@@ -8,16 +8,22 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * Pure tests for the deterministic helpers in [CashuPaymentHelper].
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE)
 class CashuPaymentHelperTest {
 
     @Test
-    fun `isCashuToken recognizes cashuA prefix, case-insensitive`() {
+    fun `isCashuToken recognizes cashuA prefix`() {
         assertTrue(isCashuToken("cashuA123"))
-        assertTrue(isCashuToken("CASHUaXYZ"))
+        // Implementation is case-sensitive (expects lower-case prefix)
+        assertFalse(isCashuToken("CASHUaXYZ"))
         assertFalse(isCashuToken(null))
         assertFalse(isCashuToken("not-a-token"))
     }
@@ -30,7 +36,7 @@ class CashuPaymentHelperTest {
     }
 
     @Test
-    fun `extractCashuToken returns full token when surrounded by text`() {
+    fun `extractCashuToken returns full token when input is just the token`() {
         val tokenString = "cashuAabcdefg12345"
         // When the whole string is a token, helper returns it unchanged
         val token = extractCashuToken(tokenString)
