@@ -536,6 +536,51 @@ class ItemManager private constructor(context: Context) {
     }
 
     /**
+     * Save a bitmap directly for an item (used when bitmap is already corrected for rotation).
+     * @param item Item to save image for.
+     * @param bitmap The bitmap to save.
+     * @return true if saved successfully, false if failed.
+     */
+    fun saveItemImageBitmap(item: Item, bitmap: Bitmap): Boolean {
+        return try {
+            val imagesDir = File(context.filesDir, "item_images")
+            if (!imagesDir.exists() && !imagesDir.mkdirs()) {
+                Log.e(TAG, "Failed to create images directory")
+                return false
+            }
+
+            val filename = "item_${item.id}.jpg"
+            val imageFile = File(imagesDir, filename)
+
+            if (imageFile.exists() && !imageFile.delete()) {
+                Log.e(TAG, "Failed to delete existing image file")
+            }
+
+            // Scale down if necessary
+            var finalBitmap = bitmap
+            if (bitmap.width > 1024 || bitmap.height > 1024) {
+                val maxDimension = maxOf(bitmap.width, bitmap.height)
+                val scale = 1024f / maxDimension
+                val newWidth = (bitmap.width * scale).toInt()
+                val newHeight = (bitmap.height * scale).toInt()
+                finalBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+            }
+
+            FileOutputStream(imageFile).use { outputStream ->
+                finalBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                outputStream.flush()
+            }
+
+            item.imagePath = imageFile.absolutePath
+            updateItem(item)
+            true
+        } catch (e: IOException) {
+            Log.e(TAG, "Error saving item image bitmap: ${e.message}", e)
+            false
+        }
+    }
+
+    /**
      * Delete the image associated with an item.
      * @param item Item whose image should be deleted.
      * @return true if deleted successfully or if no image existed, false if failed.

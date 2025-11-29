@@ -3,9 +3,7 @@ package com.electricdreams.numo.feature.settings
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.util.Log
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -36,23 +34,18 @@ import java.util.concurrent.TimeUnit
 /**
  * Premium Apple/Google-like mint management screen.
  * 
- * Matches AutoWithdrawSettingsActivity design patterns:
- * - Flat cards with 0dp elevation
- * - Section headers with uppercase styling
- * - Clean white card backgrounds
- * - Smooth micro-animations
- * 
  * Features:
- * - Lightning Mint hero card showing primary receive mint
- * - Clean list of all mints with expandable action buttons
- * - Long-press to reveal delete/info actions
- * - Tap to select as Lightning mint
+ * - Lightning Mint hero card for primary receive mint
+ * - Clean list with total balance header
+ * - Tap mints to view details
+ * - Smooth micro-animations
  */
 class MintsSettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MintsSettings"
         private const val PREF_LIGHTNING_MINT = "lightning_mint_url"
+        const val REQUEST_MINT_DETAILS = 1001
     }
 
     // Views
@@ -66,7 +59,12 @@ class MintsSettingsActivity : AppCompatActivity() {
     private lateinit var lightningMintUrlText: TextView
     private lateinit var lightningMintBalance: TextView
     private lateinit var allMintsHeader: TextView
+    private lateinit var mintsCard: CardView
+    private lateinit var totalBalanceHeader: LinearLayout
+    private lateinit var totalBalanceValue: TextView
+    private lateinit var totalBalanceDivider: View
     private lateinit var mintsContainer: LinearLayout
+    private lateinit var addMintHeader: TextView
     private lateinit var addMintCard: AddMintInputCard
     private lateinit var emptyState: View
 
@@ -76,7 +74,7 @@ class MintsSettingsActivity : AppCompatActivity() {
     private var selectedLightningMint: String? = null
     private val mintItems = mutableMapOf<String, MintListItem>()
 
-    // QR Scanner launcher
+    // Activity result launchers
     private val qrScannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -84,6 +82,25 @@ class MintsSettingsActivity : AppCompatActivity() {
             val qrValue = result.data?.getStringExtra(QRScannerActivity.EXTRA_QR_VALUE)
             qrValue?.let { url ->
                 addMintCard.setMintUrl(normalizeUrl(url))
+            }
+        }
+    }
+
+    private val mintDetailsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            // Refresh UI after mint details changed
+            val changedMint = result.data?.getStringExtra(MintDetailsActivity.EXTRA_MINT_URL)
+            val isDeleted = result.data?.getBooleanExtra(MintDetailsActivity.EXTRA_DELETED, false) ?: false
+            val isLightningMint = result.data?.getBooleanExtra(MintDetailsActivity.EXTRA_SET_AS_LIGHTNING, false) ?: false
+            
+            if (isDeleted && changedMint != null) {
+                handleMintDeleted(changedMint)
+            } else if (isLightningMint && changedMint != null) {
+                setLightningMint(changedMint, animate = true)
+            } else {
+                loadMintsAndBalances()
             }
         }
     }
@@ -120,7 +137,12 @@ class MintsSettingsActivity : AppCompatActivity() {
         lightningMintUrlText = findViewById(R.id.lightning_mint_url)
         lightningMintBalance = findViewById(R.id.lightning_mint_balance)
         allMintsHeader = findViewById(R.id.all_mints_header)
+        mintsCard = findViewById(R.id.mints_card)
+        totalBalanceHeader = findViewById(R.id.total_balance_header)
+        totalBalanceValue = findViewById(R.id.total_balance_value)
+        totalBalanceDivider = findViewById(R.id.total_balance_divider)
         mintsContainer = findViewById(R.id.mints_container)
+        addMintHeader = findViewById(R.id.add_mint_header)
         addMintCard = findViewById(R.id.add_mint_card)
         emptyState = findViewById(R.id.empty_state)
     }
@@ -178,6 +200,7 @@ class MintsSettingsActivity : AppCompatActivity() {
             // Build UI
             buildMintList(mints)
             updateLightningMintCard()
+            updateTotalBalance()
             
             // Refresh stale mint info
             refreshStaleMintInfo()
@@ -196,6 +219,7 @@ class MintsSettingsActivity : AppCompatActivity() {
             val mints = mintManager.getAllowedMints()
             buildMintList(mints)
             updateLightningMintCard()
+            updateTotalBalance()
         }
     }
 
@@ -216,29 +240,12 @@ class MintsSettingsActivity : AppCompatActivity() {
         sortedMints.forEachIndexed { index, mintUrl ->
             val item = MintListItem(this)
             val balance = mintBalances[mintUrl] ?: 0L
-            val isPrimary = mintUrl == selectedLightningMint
+            val isLast = index == sortedMints.lastIndex
 
-            item.bind(mintUrl, balance, isPrimary)
+            item.bind(mintUrl, balance, isLast)
             
             item.setOnMintItemListener(object : MintListItem.OnMintItemListener {
                 override fun onMintTapped(url: String) {
-                    // Collapse any other expanded items
-                    mintItems.values.forEach { it.collapseIfExpanded() }
-                    setLightningMint(url, animate = true)
-                }
-
-                override fun onMintLongPressed(url: String): Boolean {
-                    // Collapse other items first
-                    mintItems.values.filter { it.getMintUrl() != url }
-                        .forEach { it.collapseIfExpanded() }
-                    return false // Let the item handle expansion
-                }
-
-                override fun onDeleteClicked(url: String) {
-                    showRemoveConfirmation(url)
-                }
-
-                override fun onInfoClicked(url: String) {
                     openMintDetails(url)
                 }
             })
@@ -247,24 +254,37 @@ class MintsSettingsActivity : AppCompatActivity() {
             mintItems[mintUrl] = item
 
             // Staggered entrance animation
-            item.animateEntrance(index * 60L)
+            item.animateEntrance(index * 50L)
+        }
+    }
+
+    private fun updateTotalBalance() {
+        val totalBalance = mintBalances.values.sum()
+        
+        if (totalBalance > 0 && mintBalances.size > 1) {
+            totalBalanceHeader.visibility = View.VISIBLE
+            totalBalanceDivider.visibility = View.VISIBLE
+            totalBalanceValue.text = Amount(totalBalance, Amount.Currency.BTC).toString()
+            
+            // Animate in
+            totalBalanceHeader.alpha = 0f
+            totalBalanceHeader.animate()
+                .alpha(1f)
+                .setDuration(200)
+                .start()
+        } else {
+            totalBalanceHeader.visibility = View.GONE
+            totalBalanceDivider.visibility = View.GONE
         }
     }
 
     private fun setLightningMint(mintUrl: String, animate: Boolean) {
-        val previousMint = selectedLightningMint
         selectedLightningMint = mintUrl
         
         // Save preference
         getPreferences(MODE_PRIVATE).edit()
             .putString(PREF_LIGHTNING_MINT, mintUrl)
             .apply()
-        
-        // Update list items
-        previousMint?.let { prev ->
-            mintItems[prev]?.updatePrimaryState(false, animate)
-        }
-        mintItems[mintUrl]?.updatePrimaryState(true, animate)
         
         // Update hero card
         updateLightningMintCard()
@@ -332,49 +352,31 @@ class MintsSettingsActivity : AppCompatActivity() {
     private fun openMintDetails(mintUrl: String) {
         val intent = Intent(this, MintDetailsActivity::class.java).apply {
             putExtra(MintDetailsActivity.EXTRA_MINT_URL, mintUrl)
+            putExtra(MintDetailsActivity.EXTRA_IS_LIGHTNING_MINT, mintUrl == selectedLightningMint)
         }
-        startActivity(intent)
+        mintDetailsLauncher.launch(intent)
     }
 
-    private fun showRemoveConfirmation(mintUrl: String) {
-        val displayName = mintManager.getMintDisplayName(mintUrl)
+    private fun handleMintDeleted(mintUrl: String) {
+        mintBalances.remove(mintUrl)
+        mintItems.remove(mintUrl)
         
-        AlertDialog.Builder(this, R.style.Theme_Numo_Dialog)
-            .setTitle(getString(R.string.mints_remove_title))
-            .setMessage(getString(R.string.mints_remove_message, displayName))
-            .setPositiveButton(getString(R.string.mints_remove_confirm)) { _, _ ->
-                removeMint(mintUrl)
+        // If deleted mint was lightning mint, select new one
+        if (selectedLightningMint == mintUrl) {
+            val mints = mintManager.getAllowedMints()
+            val newLightning = mints.maxByOrNull { mintBalances[it] ?: 0L }
+            if (newLightning != null) {
+                setLightningMint(newLightning, animate = true)
+            } else {
+                selectedLightningMint = null
+                lightningMintSection.visibility = View.GONE
             }
-            .setNegativeButton(getString(R.string.common_cancel), null)
-            .show()
-    }
-
-    private fun removeMint(mintUrl: String) {
-        val item = mintItems[mintUrl] ?: return
+        }
         
-        item.animateRemoval {
-            mintManager.removeMint(mintUrl)
-            mintBalances.remove(mintUrl)
-            mintItems.remove(mintUrl)
-            mintsContainer.removeView(item)
-            
-            // If removed mint was lightning mint, select new one
-            if (selectedLightningMint == mintUrl) {
-                val mints = mintManager.getAllowedMints()
-                val newLightning = mints.maxByOrNull { mintBalances[it] ?: 0L }
-                if (newLightning != null) {
-                    setLightningMint(newLightning, animate = true)
-                } else {
-                    selectedLightningMint = null
-                    lightningMintSection.visibility = View.GONE
-                }
-            }
-            
-            if (mintManager.getAllowedMints().isEmpty()) {
-                showEmptyState()
-            }
-            
-            Toast.makeText(this, getString(R.string.mints_removed_toast), Toast.LENGTH_SHORT).show()
+        if (mintManager.getAllowedMints().isEmpty()) {
+            showEmptyState()
+        } else {
+            loadMintsAndBalances()
         }
     }
 
@@ -433,7 +435,6 @@ class MintsSettingsActivity : AppCompatActivity() {
     private suspend fun validateMintUrl(url: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val infoUrl = "$url/v1/info"
-            Log.d(TAG, "Validating mint: $infoUrl")
             
             val client = OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
@@ -450,7 +451,6 @@ class MintsSettingsActivity : AppCompatActivity() {
             response.close()
             isValid
         } catch (e: Exception) {
-            Log.e(TAG, "Mint validation error: ${e.message}")
             false
         }
     }
@@ -505,14 +505,14 @@ class MintsSettingsActivity : AppCompatActivity() {
 
     private fun showEmptyState() {
         emptyState.visibility = View.VISIBLE
-        mintsContainer.visibility = View.GONE
+        mintsCard.visibility = View.GONE
         lightningMintSection.visibility = View.GONE
         allMintsHeader.visibility = View.GONE
     }
 
     private fun hideEmptyState() {
         emptyState.visibility = View.GONE
-        mintsContainer.visibility = View.VISIBLE
+        mintsCard.visibility = View.VISIBLE
         allMintsHeader.visibility = View.VISIBLE
     }
 
@@ -524,7 +524,7 @@ class MintsSettingsActivity : AppCompatActivity() {
             .alpha(1f)
             .translationY(0f)
             .setDuration(350)
-            .setInterpolator(AccelerateDecelerateInterpolator())
+            .setInterpolator(DecelerateInterpolator())
             .start()
 
         // Add mint card entrance

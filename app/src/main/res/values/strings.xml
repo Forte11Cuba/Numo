@@ -781,5 +781,7 @@
     <string name="mint_details_delete">Delete Mint</string>
     <string name="mint_details_copied">Copied to clipboard</string>
     <string name="mint_details_copy">Copy</string>
+    <string name="mint_details_fetch_error">Unable to fetch mint info</string>
+    <string name="common_retry">Retry</string>
 
 </resources>

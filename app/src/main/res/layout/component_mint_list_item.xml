@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 
+    Clean mint list item without selection indicators.
+    Tapping opens mint details (no selection behavior).
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mint_item_root"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:layout_height="wrap_content">
 
     <!-- Main Row Content -->
     <LinearLayout
@@ -13,41 +17,25 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="20dp"
-        android:paddingVertical="16dp"
+        android:paddingVertical="14dp"
         android:background="?attr/selectableItemBackground"
         android:clickable="true"
         android:focusable="true">
 
-        <!-- Mint Icon Container with Selection Badge -->
+        <!-- Mint Icon -->
         <FrameLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:id="@+id/icon_container"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_circle_subtle">
 
-            <FrameLayout
-                android:id="@+id/icon_container"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/bg_circle_subtle">
-
-                <ImageView
-                    android:id="@+id/mint_icon"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_bitcoin"
-                    android:contentDescription="@string/cd_mint_icon" />
-
-            </FrameLayout>
-
-            <!-- Selection Badge (checkmark) - positioned bottom-right -->
             <ImageView
-                android:id="@+id/selected_badge"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="bottom|end"
-                android:src="@drawable/ic_check_badge"
-                android:visibility="gone"
-                android:contentDescription="@string/cd_mint_selected" />
+                android:id="@+id/mint_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_bitcoin"
+                android:contentDescription="@string/cd_mint_icon" />
 
         </FrameLayout>
 
@@ -57,7 +45,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="14dp"
             android:layout_marginEnd="12dp">
 
             <TextView
@@ -98,93 +86,12 @@
         <!-- Chevron -->
         <ImageView
             android:id="@+id/chevron"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:src="@drawable/ic_chevron_right"
-            app:tint="@color/color_text_tertiary"
+            app:tint="@color/color_text_quaternary"
             android:contentDescription="@null" />
 
     </LinearLayout>
 
-    <!-- Expandable Action Buttons -->
-    <LinearLayout
-        android:id="@+id/actions_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingHorizontal="20dp"
-        android:paddingBottom="16dp"
-        android:visibility="gone">
-
-        <!-- Info Button -->
-        <LinearLayout
-            android:id="@+id/info_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:background="@drawable/bg_button_secondary"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
-            android:layout_marginEnd="12dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:src="@drawable/ic_info"
-                app:tint="@color/color_text_primary"
-                android:layout_marginEnd="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/mint_action_info"
-                android:textSize="14sp"
-                android:textColor="@color/color_text_primary"
-                android:fontFamily="sans-serif-medium" />
-
-        </LinearLayout>
-
-        <!-- Delete Button -->
-        <LinearLayout
-            android:id="@+id/delete_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:background="@drawable/bg_button_danger"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:src="@drawable/ic_trash"
-                app:tint="@color/color_error"
-                android:layout_marginEnd="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/mint_action_delete"
-                android:textSize="14sp"
-                android:textColor="@color/color_error"
-                android:fontFamily="sans-serif-medium" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginStart="84dp"
-        android:background="@color/color_divider" />
-
-</LinearLayout>
+</FrameLayout>

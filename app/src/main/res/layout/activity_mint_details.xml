@@ -13,7 +13,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="8dp"
-        android:elevation="1dp"
+        android:elevation="0dp"
         android:background="@color/color_bg_white"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -42,13 +42,54 @@
 
     </LinearLayout>
 
+    <!-- Error Banner -->
+    <LinearLayout
+        android:id="@+id/error_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"
+        android:background="@color/color_error_bg"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/top_bar">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="12dp"
+            android:src="@drawable/ic_warning"
+            app:tint="@color/color_error" />
+
+        <TextView
+            android:id="@+id/error_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/mint_details_fetch_error"
+            android:textSize="14sp"
+            android:textColor="@color/color_error" />
+
+        <ImageButton
+            android:id="@+id/error_retry_button"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            app:tint="@color/color_error"
+            android:contentDescription="@string/common_retry" />
+
+    </LinearLayout>
+
     <!-- Scrollable Content -->
     <ScrollView
+        android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:fillViewport="true"
         android:background="@color/color_bg_surface"
-        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintTop_toBottomOf="@id/error_banner"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
@@ -124,6 +165,36 @@
                     android:textSize="18sp"
                     android:textColor="@color/color_text_primary"
                     android:fontFamily="sans-serif-medium" />
+
+                <!-- Lightning Badge (shown if this is the lightning mint) -->
+                <LinearLayout
+                    android:id="@+id/lightning_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="6dp"
+                    android:background="@drawable/bg_badge_lightning"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="6dp"
+                        android:src="@drawable/ic_lightning_bolt"
+                        app:tint="@color/color_bitcoin_orange" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mints_lightning_mint"
+                        android:textSize="13sp"
+                        android:textColor="@color/color_bitcoin_orange"
+                        android:fontFamily="sans-serif-medium" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -232,49 +303,6 @@
             </LinearLayout>
 
             <!-- ==================== -->
-            <!-- CONTACT SECTION -->
-            <!-- ==================== -->
-            <LinearLayout
-                android:id="@+id/contact_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="20dp"
-                android:paddingTop="24dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginBottom="12dp"
-                    android:fontFamily="sans-serif"
-                    android:text="@string/mint_details_contact"
-                    android:textAllCaps="true"
-                    android:textColor="@color/color_text_secondary"
-                    android:textSize="13sp"
-                    android:letterSpacing="0.03" />
-
-                <androidx.cardview.widget.CardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/color_bg_white"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <LinearLayout
-                        android:id="@+id/contact_container"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:divider="@drawable/bg_divider_inset"
-                        android:showDividers="middle" />
-
-                </androidx.cardview.widget.CardView>
-
-            </LinearLayout>
-
-            <!-- ==================== -->
             <!-- DETAILS SECTION -->
             <!-- ==================== -->
             <LinearLayout
@@ -307,9 +335,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:divider="@drawable/bg_divider_inset"
-                        android:showDividers="middle">
+                        android:orientation="vertical">
 
                         <!-- URL Row -->
                         <LinearLayout
@@ -361,6 +387,13 @@
 
                         </LinearLayout>
 
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="52dp"
+                            android:background="@color/color_divider" />
+
                         <!-- Version Row -->
                         <LinearLayout
                             android:id="@+id/version_row"
@@ -399,47 +432,6 @@
 
                         </LinearLayout>
 
-                        <!-- NUTs Row -->
-                        <LinearLayout
-                            android:id="@+id/nuts_row"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:padding="20dp"
-                            android:visibility="gone">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:layout_marginEnd="12dp"
-                                android:src="@drawable/ic_check"
-                                app:tint="@color/color_text_tertiary" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/mint_details_features"
-                                android:textSize="15sp"
-                                android:textColor="@color/color_text_secondary" />
-
-                            <View
-                                android:layout_width="0dp"
-                                android:layout_height="0dp"
-                                android:layout_weight="1" />
-
-                            <TextView
-                                android:id="@+id/nuts_value"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:maxWidth="160dp"
-                                android:textSize="15sp"
-                                android:textColor="@color/color_text_primary"
-                                android:maxLines="2"
-                                android:ellipsize="end" />
-
-                        </LinearLayout>
-
                     </LinearLayout>
 
                 </androidx.cardview.widget.CardView>
@@ -473,9 +465,44 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:divider="@drawable/bg_divider_inset"
-                    android:showDividers="middle">
+                    android:orientation="vertical">
+
+                    <!-- Set as Lightning Mint Button -->
+                    <LinearLayout
+                        android:id="@+id/set_lightning_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="20dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginEnd="16dp"
+                            android:src="@drawable/ic_lightning_bolt"
+                            app:tint="@color/color_bitcoin_orange" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/mints_set_as_lightning"
+                            android:textSize="17sp"
+                            android:textColor="@color/color_text_primary"
+                            android:fontFamily="sans-serif-medium" />
+
+                    </LinearLayout>
+
+                    <!-- Divider -->
+                    <View
+                        android:id="@+id/action_divider_1"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="58dp"
+                        android:background="@color/color_divider" />
 
                     <!-- Copy URL Button -->
                     <LinearLayout
@@ -505,6 +532,13 @@
                             android:fontFamily="sans-serif-medium" />
 
                     </LinearLayout>
+
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="58dp"
+                        android:background="@color/color_divider" />
 
                     <!-- Delete Button -->
                     <LinearLayout

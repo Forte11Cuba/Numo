@@ -1,13 +1,10 @@
 package com.electricdreams.numo.ui.components
 
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
@@ -20,14 +17,13 @@ import com.electricdreams.numo.core.util.MintIconCache
 import com.electricdreams.numo.core.util.MintManager
 
 /**
- * A premium Apple/Google-style mint list item matching MintSelectionBottomSheet design.
+ * Clean, simplified mint list item.
  * 
  * Features:
- * - Clean row-based layout without card elevation
- * - Subtle selection indicator with checkmark
- * - Expandable action buttons on long-press
- * - Smooth micro-animations for all interactions
- * - No green borders - uses muted, professional styling
+ * - Clean row layout: icon, name, URL, balance, chevron
+ * - Tap to open mint details
+ * - No selection indicators or expandable buttons
+ * - Smooth tap animation
  */
 class MintListItem @JvmOverloads constructor(
     context: Context,
@@ -37,30 +33,20 @@ class MintListItem @JvmOverloads constructor(
 
     interface OnMintItemListener {
         fun onMintTapped(mintUrl: String)
-        fun onMintLongPressed(mintUrl: String): Boolean
-        fun onDeleteClicked(mintUrl: String)
-        fun onInfoClicked(mintUrl: String)
     }
 
-    // Main row views
+    // Views
     private val container: View
     private val iconContainer: FrameLayout
     private val mintIcon: ImageView
-    private val selectedBadge: View
     private val nameText: TextView
     private val urlText: TextView
     private val balanceText: TextView
     private val chevron: ImageView
     
-    // Expanded action buttons
-    private val actionsContainer: LinearLayout
-    private val infoButton: View
-    private val deleteButton: View
-    
     private var mintUrl: String = ""
     private var listener: OnMintItemListener? = null
-    private var isSelectedAsPrimary = false
-    private var isExpanded = false
+    private var isLastItem: Boolean = false
 
     init {
         LayoutInflater.from(context).inflate(R.layout.component_mint_list_item, this, true)
@@ -68,54 +54,24 @@ class MintListItem @JvmOverloads constructor(
         container = findViewById(R.id.mint_item_container)
         iconContainer = findViewById(R.id.icon_container)
         mintIcon = findViewById(R.id.mint_icon)
-        selectedBadge = findViewById(R.id.selected_badge)
         nameText = findViewById(R.id.mint_name)
         urlText = findViewById(R.id.mint_url)
         balanceText = findViewById(R.id.balance_text)
         chevron = findViewById(R.id.chevron)
-        actionsContainer = findViewById(R.id.actions_container)
-        infoButton = findViewById(R.id.info_button)
-        deleteButton = findViewById(R.id.delete_button)
         
-        setupClickListeners()
+        setupClickListener()
     }
 
-    private fun setupClickListeners() {
+    private fun setupClickListener() {
         container.setOnClickListener {
-            if (isExpanded) {
-                collapseActions()
-            } else {
-                animateTap()
-                listener?.onMintTapped(mintUrl)
-            }
-        }
-        
-        container.setOnLongClickListener {
-            if (!isExpanded) {
-                expandActions()
-            }
-            true
-        }
-        
-        infoButton.setOnClickListener {
-            animateButtonTap(it) {
-                listener?.onInfoClicked(mintUrl)
-            }
-        }
-        
-        deleteButton.setOnClickListener {
-            animateButtonTap(it) {
-                listener?.onDeleteClicked(mintUrl)
-            }
+            animateTap()
+            listener?.onMintTapped(mintUrl)
         }
     }
 
-    fun bind(url: String, balance: Long, isPrimary: Boolean = false) {
+    fun bind(url: String, balance: Long, isLast: Boolean = false) {
         mintUrl = url
-        isSelectedAsPrimary = isPrimary
-        isExpanded = false
-        actionsContainer.visibility = View.GONE
-        actionsContainer.alpha = 0f
+        isLastItem = isLast
         
         // Get mint info
         val mintManager = MintManager.getInstance(context)
@@ -126,11 +82,33 @@ class MintListItem @JvmOverloads constructor(
         urlText.text = shortUrl
         balanceText.text = Amount(balance, Amount.Currency.BTC).toString()
         
-        // Update selection state
-        updatePrimaryState(isPrimary, animate = false)
-        
         // Load icon
         loadIcon(url)
+        
+        // Add divider if not last item
+        updateDivider()
+    }
+
+    private fun updateDivider() {
+        // Remove any existing divider
+        val existingDivider = findViewById<View>(R.id.item_divider)
+        existingDivider?.let { (parent as? FrameLayout)?.removeView(it) }
+        
+        if (!isLastItem) {
+            // Add divider view
+            val divider = View(context).apply {
+                id = R.id.item_divider
+                layoutParams = LayoutParams(
+                    LayoutParams.MATCH_PARENT,
+                    resources.getDimensionPixelSize(R.dimen.divider_height)
+                ).apply {
+                    marginStart = resources.getDimensionPixelSize(R.dimen.mint_item_divider_margin)
+                    gravity = android.view.Gravity.BOTTOM
+                }
+                setBackgroundColor(context.getColor(R.color.color_divider))
+            }
+            addView(divider)
+        }
     }
 
     private fun loadIcon(url: String) {
@@ -141,6 +119,7 @@ class MintListItem @JvmOverloads constructor(
                 if (bitmap != null) {
                     mintIcon.setImageBitmap(bitmap)
                     mintIcon.clipToOutline = true
+                    mintIcon.clearColorFilter()
                     return
                 }
             } catch (e: Exception) {
@@ -150,141 +129,6 @@ class MintListItem @JvmOverloads constructor(
         
         mintIcon.setImageResource(R.drawable.ic_bitcoin)
         mintIcon.setColorFilter(context.getColor(R.color.color_primary))
-    }
-
-    fun updatePrimaryState(isPrimary: Boolean, animate: Boolean = true) {
-        isSelectedAsPrimary = isPrimary
-        
-        if (isPrimary) {
-            // Show selection badge with animation
-            if (animate) {
-                selectedBadge.visibility = View.VISIBLE
-                selectedBadge.alpha = 0f
-                selectedBadge.scaleX = 0.3f
-                selectedBadge.scaleY = 0.3f
-                selectedBadge.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(300)
-                    .setInterpolator(OvershootInterpolator(2f))
-                    .start()
-                
-                // Subtle highlight pulse on container
-                container.animate()
-                    .alpha(0.95f)
-                    .setDuration(100)
-                    .withEndAction {
-                        container.animate()
-                            .alpha(1f)
-                            .setDuration(100)
-                            .start()
-                    }
-                    .start()
-            } else {
-                selectedBadge.visibility = View.VISIBLE
-                selectedBadge.alpha = 1f
-                selectedBadge.scaleX = 1f
-                selectedBadge.scaleY = 1f
-            }
-            
-            // Change balance color to accent
-            balanceText.setTextColor(context.getColor(R.color.color_primary))
-            
-            // Hide chevron when selected
-            chevron.animate()
-                .alpha(0f)
-                .setDuration(150)
-                .start()
-        } else {
-            // Hide selection badge
-            if (animate && selectedBadge.visibility == View.VISIBLE) {
-                selectedBadge.animate()
-                    .alpha(0f)
-                    .scaleX(0.3f)
-                    .scaleY(0.3f)
-                    .setDuration(200)
-                    .withEndAction { selectedBadge.visibility = View.GONE }
-                    .start()
-            } else {
-                selectedBadge.visibility = View.GONE
-            }
-            
-            // Reset balance color
-            balanceText.setTextColor(context.getColor(R.color.color_text_secondary))
-            
-            // Show chevron
-            chevron.animate()
-                .alpha(1f)
-                .setDuration(150)
-                .start()
-        }
-    }
-
-    private fun expandActions() {
-        isExpanded = true
-        
-        // Slide in actions container
-        actionsContainer.visibility = View.VISIBLE
-        actionsContainer.alpha = 0f
-        actionsContainer.translationY = -20f
-        
-        actionsContainer.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(250)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        
-        // Animate buttons staggered
-        infoButton.alpha = 0f
-        infoButton.translationX = -30f
-        infoButton.animate()
-            .alpha(1f)
-            .translationX(0f)
-            .setStartDelay(50)
-            .setDuration(200)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        
-        deleteButton.alpha = 0f
-        deleteButton.translationX = -30f
-        deleteButton.animate()
-            .alpha(1f)
-            .translationX(0f)
-            .setStartDelay(100)
-            .setDuration(200)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        
-        // Rotate chevron
-        chevron.animate()
-            .rotation(90f)
-            .setDuration(200)
-            .start()
-        
-        // Haptic feedback
-        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-    }
-
-    private fun collapseActions() {
-        isExpanded = false
-        
-        actionsContainer.animate()
-            .alpha(0f)
-            .translationY(-10f)
-            .setDuration(150)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .withEndAction {
-                actionsContainer.visibility = View.GONE
-            }
-            .start()
-        
-        // Reset chevron
-        chevron.animate()
-            .rotation(0f)
-            .setDuration(200)
-            .start()
     }
 
     private fun animateTap() {
@@ -303,25 +147,9 @@ class MintListItem @JvmOverloads constructor(
             .start()
     }
 
-    private fun animateButtonTap(view: View, onComplete: () -> Unit) {
-        view.animate()
-            .scaleX(0.9f)
-            .scaleY(0.9f)
-            .setDuration(80)
-            .withEndAction {
-                view.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .withEndAction { onComplete() }
-                    .start()
-            }
-            .start()
-    }
-
     fun animateEntrance(delay: Long) {
         alpha = 0f
-        translationY = 30f
+        translationY = 20f
         
         animate()
             .alpha(1f)
@@ -337,26 +165,10 @@ class MintListItem @JvmOverloads constructor(
         iconContainer.animate()
             .scaleX(1f)
             .scaleY(1f)
-            .setStartDelay(delay + 100)
-            .setDuration(350)
+            .setStartDelay(delay + 80)
+            .setDuration(300)
             .setInterpolator(OvershootInterpolator(2f))
             .start()
-    }
-
-    fun animateRemoval(onComplete: () -> Unit) {
-        animate()
-            .alpha(0f)
-            .translationX(width.toFloat())
-            .setDuration(250)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .withEndAction { onComplete() }
-            .start()
-    }
-
-    fun collapseIfExpanded() {
-        if (isExpanded) {
-            collapseActions()
-        }
     }
 
     fun setOnMintItemListener(listener: OnMintItemListener) {

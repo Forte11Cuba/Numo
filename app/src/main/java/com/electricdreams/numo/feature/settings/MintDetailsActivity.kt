@@ -3,10 +3,13 @@ package com.electricdreams.numo.feature.settings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -16,7 +19,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
 import com.electricdreams.numo.R
 import com.electricdreams.numo.core.cashu.CashuWalletManager
@@ -26,31 +28,39 @@ import com.electricdreams.numo.core.util.MintManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.cashudevkit.MintInfo
 
 /**
  * Premium mint details screen inspired by cashu-me MintDetailsPage.
  * 
- * Displays comprehensive mint information in a beautiful, organized layout:
- * - Header with icon, name, and balance
- * - Description and MOTD sections
- * - Contact information
- * - Technical details (URL, version, supported features)
- * - Action buttons (copy URL, delete)
+ * Features:
+ * - Instant loading from cached mint info
+ * - Async refresh with error handling
+ * - Set as Lightning Mint action
+ * - Copy URL, Delete actions
+ * - Beautiful animations
  */
 class MintDetailsActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_MINT_URL = "mint_url"
+        const val EXTRA_IS_LIGHTNING_MINT = "is_lightning_mint"
+        const val EXTRA_DELETED = "deleted"
+        const val EXTRA_SET_AS_LIGHTNING = "set_as_lightning"
         private const val TAG = "MintDetails"
     }
 
     // Header views
     private lateinit var backButton: ImageButton
+    private lateinit var errorBanner: LinearLayout
+    private lateinit var errorText: TextView
+    private lateinit var errorRetryButton: ImageButton
     private lateinit var iconContainer: FrameLayout
     private lateinit var mintIcon: ImageView
     private lateinit var mintName: TextView
     private lateinit var mintUrlText: TextView
     private lateinit var balanceText: TextView
+    private lateinit var lightningBadge: LinearLayout
 
     // Content sections
     private lateinit var descriptionSection: LinearLayout
@@ -58,26 +68,24 @@ class MintDetailsActivity : AppCompatActivity() {
     private lateinit var motdSection: LinearLayout
     private lateinit var motdText: TextView
     
-    // Contact section
-    private lateinit var contactSection: LinearLayout
-    private lateinit var contactContainer: LinearLayout
-    
     // Details section
     private lateinit var detailsSection: LinearLayout
     private lateinit var urlRow: View
     private lateinit var urlValue: TextView
     private lateinit var versionRow: View
     private lateinit var versionValue: TextView
-    private lateinit var nutsRow: View
-    private lateinit var nutsValue: TextView
     
     // Actions
+    private lateinit var setLightningButton: LinearLayout
+    private lateinit var actionDivider1: View
     private lateinit var copyUrlButton: LinearLayout
     private lateinit var deleteButton: LinearLayout
 
     // State
     private lateinit var mintManager: MintManager
     private var mintUrl: String = ""
+    private var isLightningMint: Boolean = false
+    private var hasFetchError: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +95,7 @@ class MintDetailsActivity : AppCompatActivity() {
             finish()
             return
         }
+        isLightningMint = intent.getBooleanExtra(EXTRA_IS_LIGHTNING_MINT, false)
 
         mintManager = MintManager.getInstance(this)
         MintIconCache.initialize(this)
@@ -99,28 +108,29 @@ class MintDetailsActivity : AppCompatActivity() {
 
     private fun initViews() {
         backButton = findViewById(R.id.back_button)
+        errorBanner = findViewById(R.id.error_banner)
+        errorText = findViewById(R.id.error_text)
+        errorRetryButton = findViewById(R.id.error_retry_button)
         iconContainer = findViewById(R.id.icon_container)
         mintIcon = findViewById(R.id.mint_icon)
         mintName = findViewById(R.id.mint_name)
         mintUrlText = findViewById(R.id.mint_url)
         balanceText = findViewById(R.id.balance_text)
+        lightningBadge = findViewById(R.id.lightning_badge)
         
         descriptionSection = findViewById(R.id.description_section)
         descriptionText = findViewById(R.id.description_text)
         motdSection = findViewById(R.id.motd_section)
         motdText = findViewById(R.id.motd_text)
         
-        contactSection = findViewById(R.id.contact_section)
-        contactContainer = findViewById(R.id.contact_container)
-        
         detailsSection = findViewById(R.id.details_section)
         urlRow = findViewById(R.id.url_row)
         urlValue = findViewById(R.id.url_value)
         versionRow = findViewById(R.id.version_row)
         versionValue = findViewById(R.id.version_value)
-        nutsRow = findViewById(R.id.nuts_row)
-        nutsValue = findViewById(R.id.nuts_value)
         
+        setLightningButton = findViewById(R.id.set_lightning_button)
+        actionDivider1 = findViewById(R.id.action_divider_1)
         copyUrlButton = findViewById(R.id.copy_url_button)
         deleteButton = findViewById(R.id.delete_button)
     }
@@ -130,8 +140,20 @@ class MintDetailsActivity : AppCompatActivity() {
             finish()
         }
         
+        errorRetryButton.setOnClickListener {
+            animateButtonTap(it) {
+                refreshMintInfo()
+            }
+        }
+        
         urlRow.setOnClickListener {
             copyToClipboard(mintUrl)
+        }
+        
+        setLightningButton.setOnClickListener {
+            animateButtonTap(it) {
+                setAsLightningMint()
+            }
         }
         
         copyUrlButton.setOnClickListener {
@@ -148,7 +170,7 @@ class MintDetailsActivity : AppCompatActivity() {
     }
 
     private fun loadMintDetails() {
-        // Basic info
+        // Basic info (always available)
         val displayName = mintManager.getMintDisplayName(mintUrl)
         val shortUrl = mintUrl.removePrefix("https://").removePrefix("http://")
         
@@ -156,14 +178,32 @@ class MintDetailsActivity : AppCompatActivity() {
         mintUrlText.text = shortUrl
         urlValue.text = shortUrl
         
+        // Update lightning badge visibility
+        updateLightningBadge()
+        
         // Load icon
         loadMintIcon()
         
         // Load balance
         loadBalance()
         
-        // Load mint info
-        loadMintInfo()
+        // Load cached mint info first (instant)
+        loadCachedMintInfo()
+        
+        // Then refresh from network (async)
+        refreshMintInfo()
+    }
+
+    private fun updateLightningBadge() {
+        if (isLightningMint) {
+            lightningBadge.visibility = View.VISIBLE
+            setLightningButton.visibility = View.GONE
+            actionDivider1.visibility = View.GONE
+        } else {
+            lightningBadge.visibility = View.GONE
+            setLightningButton.visibility = View.VISIBLE
+            actionDivider1.visibility = View.VISIBLE
+        }
     }
 
     private fun loadMintIcon() {
@@ -195,52 +235,173 @@ class MintDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadMintInfo() {
-        lifecycleScope.launch {
-            val info = withContext(Dispatchers.IO) {
-                CashuWalletManager.fetchMintInfo(mintUrl)
+    private fun loadCachedMintInfo() {
+        // Try to load from cached JSON
+        val cachedJson = mintManager.getMintInfo(mintUrl)
+        if (cachedJson != null) {
+            try {
+                val info = CashuWalletManager.mintInfoFromJson(cachedJson)
+                if (info != null) {
+                    displayCachedMintInfo(info)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse cached mint info: ${e.message}")
             }
-            
-            if (info == null) {
-                // Hide optional sections
-                descriptionSection.visibility = View.GONE
-                motdSection.visibility = View.GONE
-                contactSection.visibility = View.GONE
-                versionRow.visibility = View.GONE
-                nutsRow.visibility = View.GONE
-                return@launch
-            }
-            
-            // Description (use descriptionLong if available, else description)
-            val descriptionValue = info.descriptionLong ?: info.description
-            if (!descriptionValue.isNullOrBlank()) {
-                descriptionSection.visibility = View.VISIBLE
-                descriptionText.text = descriptionValue
-            } else {
-                descriptionSection.visibility = View.GONE
-            }
-            
-            // MOTD (Message of the Day)
-            if (!info.motd.isNullOrBlank()) {
-                motdSection.visibility = View.VISIBLE
-                motdText.text = info.motd
-            } else {
-                motdSection.visibility = View.GONE
-            }
-            
-            // Version
-            val versionString = info.version?.toString()
-            if (!versionString.isNullOrBlank()) {
-                versionRow.visibility = View.VISIBLE
-                versionValue.text = versionString
-            } else {
-                versionRow.visibility = View.GONE
-            }
-            
-            // Hide NUTs and contact sections (not available in CDK MintInfo)
-            nutsRow.visibility = View.GONE
-            contactSection.visibility = View.GONE
         }
+    }
+
+    private fun displayCachedMintInfo(info: CashuWalletManager.CachedMintInfo) {
+        // Description
+        val descriptionValue = info.descriptionLong ?: info.description
+        if (!descriptionValue.isNullOrBlank()) {
+            descriptionSection.visibility = View.VISIBLE
+            descriptionText.text = descriptionValue
+        }
+        
+        // MOTD
+        if (!info.motd.isNullOrBlank()) {
+            motdSection.visibility = View.VISIBLE
+            motdText.text = info.motd
+        }
+        
+        // Version
+        if (!info.version.isNullOrBlank()) {
+            versionRow.visibility = View.VISIBLE
+            versionValue.text = info.version
+        }
+    }
+
+    private fun refreshMintInfo() {
+        lifecycleScope.launch {
+            try {
+                val info = withContext(Dispatchers.IO) {
+                    CashuWalletManager.fetchMintInfo(mintUrl)
+                }
+                
+                if (info != null) {
+                    // Cache the fresh info
+                    withContext(Dispatchers.IO) {
+                        val json = CashuWalletManager.mintInfoToJson(info)
+                        mintManager.setMintInfo(mintUrl, json)
+                        mintManager.setMintRefreshTimestamp(mintUrl)
+                        
+                        // Also refresh icon if available
+                        info.iconUrl?.let { iconUrl ->
+                            if (iconUrl.isNotEmpty()) {
+                                MintIconCache.downloadAndCacheIcon(mintUrl, iconUrl)
+                            }
+                        }
+                    }
+                    
+                    // Update UI
+                    displayMintInfo(info)
+                    hideError()
+                    
+                    // Reload icon in case it was refreshed
+                    loadMintIcon()
+                } else {
+                    showError()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch mint info: ${e.message}")
+                showError()
+            }
+        }
+    }
+
+    private fun displayMintInfo(info: MintInfo) {
+        // Description
+        val descriptionValue = info.descriptionLong ?: info.description
+        if (!descriptionValue.isNullOrBlank()) {
+            descriptionSection.visibility = View.VISIBLE
+            descriptionText.text = descriptionValue
+            
+            // Animate in if newly visible
+            descriptionSection.alpha = 0f
+            descriptionSection.animate()
+                .alpha(1f)
+                .setDuration(200)
+                .start()
+        } else {
+            descriptionSection.visibility = View.GONE
+        }
+        
+        // MOTD (Message of the Day)
+        if (!info.motd.isNullOrBlank()) {
+            motdSection.visibility = View.VISIBLE
+            motdText.text = info.motd
+            
+            motdSection.alpha = 0f
+            motdSection.animate()
+                .alpha(1f)
+                .setDuration(200)
+                .setStartDelay(50)
+                .start()
+        } else {
+            motdSection.visibility = View.GONE
+        }
+        
+        // Version
+        val versionString = info.version?.toString()
+        if (!versionString.isNullOrBlank()) {
+            versionRow.visibility = View.VISIBLE
+            versionValue.text = versionString
+        } else {
+            versionRow.visibility = View.GONE
+        }
+    }
+
+    private fun showError() {
+        hasFetchError = true
+        errorBanner.visibility = View.VISIBLE
+        errorBanner.alpha = 0f
+        errorBanner.translationY = -20f
+        errorBanner.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(250)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+    }
+
+    private fun hideError() {
+        if (hasFetchError) {
+            hasFetchError = false
+            errorBanner.animate()
+                .alpha(0f)
+                .translationY(-20f)
+                .setDuration(200)
+                .withEndAction {
+                    errorBanner.visibility = View.GONE
+                }
+                .start()
+        }
+    }
+
+    private fun setAsLightningMint() {
+        isLightningMint = true
+        updateLightningBadge()
+        
+        // Animate the badge appearance
+        lightningBadge.alpha = 0f
+        lightningBadge.scaleX = 0.8f
+        lightningBadge.scaleY = 0.8f
+        lightningBadge.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(300)
+            .setInterpolator(OvershootInterpolator(2f))
+            .start()
+        
+        // Set result for parent activity
+        val resultIntent = Intent().apply {
+            putExtra(EXTRA_MINT_URL, mintUrl)
+            putExtra(EXTRA_SET_AS_LIGHTNING, true)
+        }
+        setResult(RESULT_OK, resultIntent)
+        
+        Toast.makeText(this, R.string.mints_lightning_changed, Toast.LENGTH_SHORT).show()
     }
 
     private fun copyToClipboard(text: String) {
@@ -265,6 +426,13 @@ class MintDetailsActivity : AppCompatActivity() {
 
     private fun deleteMint() {
         mintManager.removeMint(mintUrl)
+        
+        val resultIntent = Intent().apply {
+            putExtra(EXTRA_MINT_URL, mintUrl)
+            putExtra(EXTRA_DELETED, true)
+        }
+        setResult(RESULT_OK, resultIntent)
+        
         Toast.makeText(this, getString(R.string.mints_removed_toast), Toast.LENGTH_SHORT).show()
         finish()
     }
@@ -303,6 +471,17 @@ class MintDetailsActivity : AppCompatActivity() {
             .alpha(1f)
             .translationY(0f)
             .setStartDelay(100)
+            .setDuration(300)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .start()
+        
+        // Balance pill slide up
+        balanceText.alpha = 0f
+        balanceText.translationY = 20f
+        balanceText.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setStartDelay(150)
             .setDuration(300)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()

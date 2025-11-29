@@ -114,6 +114,9 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.3.1")
     implementation("androidx.camera:camera-view:1.3.1")
     
+    // ExifInterface for camera image rotation correction
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+    
     // Flexbox layout for tag-based category selection
     implementation("com.google.android.flexbox:flexbox:3.0.0")
 }

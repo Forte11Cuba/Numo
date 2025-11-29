@@ -2,17 +2,15 @@
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- Clean card matching the rest of the activity (0dp elevation, no stroke) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/add_mint_inner_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp"
         app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
+        app:cardElevation="0dp"
         app:cardBackgroundColor="@color/color_bg_white"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/color_divider">
+        app:strokeWidth="0dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -23,17 +21,17 @@
             <LinearLayout
                 android:id="@+id/header_container"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="60dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingHorizontal="16dp"
+                android:paddingHorizontal="20dp"
                 android:background="?attr/selectableItemBackground">
 
                 <!-- Plus Icon -->
                 <FrameLayout
                     android:id="@+id/header_icon"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:background="@drawable/bg_circle_accent_light">
 
                     <ImageView
@@ -50,7 +48,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="16dp"
                     android:text="@string/mints_add_new_mint"
                     android:textSize="16sp"
                     android:textColor="@color/color_text_primary"
@@ -58,8 +56,8 @@
 
                 <ImageView
                     android:id="@+id/header_chevron"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:src="@drawable/ic_chevron_down"
                     app:tint="@color/color_text_tertiary" />
 
@@ -71,8 +69,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingBottom="16dp"
+                android:paddingHorizontal="20dp"
+                android:paddingBottom="20dp"
                 android:visibility="gone">
 
                 <!-- Divider -->
@@ -85,7 +83,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="10dp"
                     android:text="@string/mints_enter_url"
                     android:textSize="13sp"
                     android:textColor="@color/color_text_secondary" />
@@ -115,7 +113,7 @@
                         android:id="@+id/scan_button"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
-                        android:layout_marginStart="8dp"
+                        android:layout_marginStart="10dp"
                         android:background="@drawable/bg_button_icon"
                         android:src="@drawable/ic_qr_scan"
                         android:padding="12dp"
@@ -128,7 +126,7 @@
                 <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="14dp">
 
                     <TextView
                         android:id="@+id/add_button"

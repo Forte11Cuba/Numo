@@ -237,7 +237,7 @@ object CashuWalletManager : MintManager.MintChangeListener {
             info.description?.let { json.put("description", it) }
             info.descriptionLong?.let { json.put("descriptionLong", it) }
             info.pubkey?.let { json.put("pubkey", it) }
-            info.version?.let { json.put("version", it) }
+            info.version?.toString()?.let { json.put("version", it) }
             info.motd?.let { json.put("motd", it) }
             info.iconUrl?.let { json.put("iconUrl", it) }
         } catch (e: Exception) {
@@ -245,6 +245,39 @@ object CashuWalletManager : MintManager.MintChangeListener {
         }
         return json.toString()
     }
+
+    /**
+     * Parse MintInfo from cached JSON string.
+     * Returns a simple data holder or null if parsing fails.
+     */
+    fun mintInfoFromJson(jsonString: String): CachedMintInfo? {
+        return try {
+            val json = org.json.JSONObject(jsonString)
+            CachedMintInfo(
+                name = if (json.has("name") && !json.isNull("name")) json.getString("name") else null,
+                description = if (json.has("description") && !json.isNull("description")) json.getString("description") else null,
+                descriptionLong = if (json.has("descriptionLong") && !json.isNull("descriptionLong")) json.getString("descriptionLong") else null,
+                version = if (json.has("version") && !json.isNull("version")) json.getString("version") else null,
+                motd = if (json.has("motd") && !json.isNull("motd")) json.getString("motd") else null,
+                iconUrl = if (json.has("iconUrl") && !json.isNull("iconUrl")) json.getString("iconUrl") else null
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Error parsing cached mint info", e)
+            null
+        }
+    }
+
+    /**
+     * Simple data class to hold cached mint info.
+     */
+    data class CachedMintInfo(
+        val name: String?,
+        val description: String?,
+        val descriptionLong: String?,
+        val version: String?,
+        val motd: String?,
+        val iconUrl: String?
+    )
 
     /**
      * Rebuild wallet + database using the provided mint URLs.

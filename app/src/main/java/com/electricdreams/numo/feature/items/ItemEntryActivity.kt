@@ -339,9 +339,17 @@ class ItemEntryActivity : AppCompatActivity() {
     }
 
     private fun saveImageIfNeeded(item: Item) {
-        imageHandler.selectedImageUri?.let { uri ->
-            if (!itemManager.saveItemImage(item, uri)) {
+        // Use the corrected bitmap (with proper rotation) if available, otherwise fall back to URI
+        val bitmap = imageHandler.correctedBitmap
+        if (bitmap != null) {
+            if (!itemManager.saveItemImageBitmap(item, bitmap)) {
                 Toast.makeText(this, "Item saved but image could not be saved", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            imageHandler.selectedImageUri?.let { uri ->
+                if (!itemManager.saveItemImage(item, uri)) {
+                    Toast.makeText(this, "Item saved but image could not be saved", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

@@ -3,6 +3,7 @@ package com.electricdreams.numo.feature.items.handlers
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -16,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.exifinterface.media.ExifInterface
 import com.electricdreams.numo.core.model.Item
 import com.electricdreams.numo.core.util.ItemManager
 import java.io.File
@@ -46,6 +48,10 @@ class ImageHandler(
     }
 
     var selectedImageUri: Uri? = null
+        private set
+    
+    /** The corrected bitmap ready to be saved (with proper rotation applied) */
+    var correctedBitmap: Bitmap? = null
         private set
 
     private var currentPhotoPath: String? = null
@@ -104,7 +110,7 @@ class ImageHandler(
      */
     fun handleCameraResult(success: Boolean) {
         if (success && selectedImageUri != null) {
-            updateImagePreview()
+            updateImagePreview(fromCamera = true)
         }
     }
 
@@ -195,17 +201,54 @@ class ImageHandler(
         return image
     }
 
-    private fun updateImagePreview() {
+    private fun updateImagePreview(fromCamera: Boolean = false) {
         selectedImageUri?.let { uri ->
             try {
                 val bitmap = MediaStore.Images.Media.getBitmap(activity.contentResolver, uri)
-                itemImageView.setImageBitmap(bitmap)
+                correctedBitmap = correctImageRotation(uri, bitmap, fromCamera)
+                itemImageView.setImageBitmap(correctedBitmap)
                 itemImageView.visibility = View.VISIBLE
                 imagePlaceholder.visibility = View.GONE
                 updatePhotoButtonText()
             } catch (e: Exception) {
                 Toast.makeText(activity, "Failed to load image", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    /**
+     * Corrects image rotation based on EXIF orientation data.
+     * Camera images often have EXIF metadata indicating rotation that needs to be applied.
+     */
+    private fun correctImageRotation(uri: Uri, bitmap: Bitmap, fromCamera: Boolean): Bitmap {
+        return try {
+            val inputStream = activity.contentResolver.openInputStream(uri) ?: return bitmap
+            val exif = ExifInterface(inputStream)
+            inputStream.close()
+
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+
+            // For camera images, apply rotation based on EXIF. 
+            // EXIF ORIENTATION_ROTATE_X means the image needs X degrees clockwise rotation to display correctly.
+            val rotationDegrees = when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                ExifInterface.ORIENTATION_NORMAL -> if (fromCamera) 90f else 0f  // Camera with no EXIF often needs 90° fix
+                else -> if (fromCamera) 90f else 0f
+            }
+
+            if (rotationDegrees == 0f) {
+                bitmap
+            } else {
+                val matrix = Matrix().apply { postRotate(rotationDegrees) }
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            }
+        } catch (e: Exception) {
+            bitmap // Return original bitmap if rotation correction fails
         }
     }
 

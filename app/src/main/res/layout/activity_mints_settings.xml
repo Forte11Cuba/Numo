@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/color_bg_white">
 
-    <!-- Top Bar (matching AutoWithdrawSettingsActivity) -->
+    <!-- Top Bar -->
     <LinearLayout
         android:id="@+id/top_bar"
         android:layout_width="match_parent"
@@ -13,7 +13,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="8dp"
-        android:elevation="1dp"
+        android:elevation="0dp"
         android:background="@color/color_bg_white"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -87,7 +87,7 @@
                     android:textSize="13sp"
                     android:letterSpacing="0.03" />
 
-                <!-- Lightning Mint Card (same style as AutoWithdraw toggle card) -->
+                <!-- Lightning Mint Card -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/lightning_mint_card"
                     android:layout_width="match_parent"
@@ -240,8 +240,9 @@
                 android:textSize="13sp"
                 android:letterSpacing="0.03" />
 
-            <!-- Mints Card (same style as AutoWithdraw cards) -->
+            <!-- Mints Card -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/mints_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
@@ -250,10 +251,59 @@
                 app:cardElevation="0dp">
 
                 <LinearLayout
-                    android:id="@+id/mints_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical" />
+                    android:orientation="vertical">
+
+                    <!-- Total Balance Header -->
+                    <LinearLayout
+                        android:id="@+id/total_balance_header"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="20dp"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="14dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/mints_total_balance"
+                            android:textSize="14sp"
+                            android:textColor="@color/color_text_secondary"
+                            android:fontFamily="sans-serif" />
+
+                        <TextView
+                            android:id="@+id/total_balance_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="₿0"
+                            android:textSize="17sp"
+                            android:textColor="@color/color_text_primary"
+                            android:fontFamily="sans-serif-medium" />
+
+                    </LinearLayout>
+
+                    <!-- Divider below total balance -->
+                    <View
+                        android:id="@+id/total_balance_divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginHorizontal="20dp"
+                        android:background="@color/color_divider"
+                        android:visibility="gone" />
+
+                    <!-- Mint List Container -->
+                    <LinearLayout
+                        android:id="@+id/mints_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
 
             </androidx.cardview.widget.CardView>
 
@@ -297,6 +347,7 @@
             <!-- ADD MINT SECTION -->
             <!-- ==================== -->
             <TextView
+                android:id="@+id/add_mint_header"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
