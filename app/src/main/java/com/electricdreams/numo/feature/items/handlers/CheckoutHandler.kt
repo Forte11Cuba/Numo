@@ -9,6 +9,8 @@ import com.electricdreams.numo.core.model.CheckoutBasket
 import com.electricdreams.numo.core.util.BasketManager
 import com.electricdreams.numo.core.util.CurrencyManager
 import com.electricdreams.numo.core.worker.BitcoinPriceWorker
+import com.electricdreams.numo.feature.tips.TipSelectionActivity
+import com.electricdreams.numo.feature.tips.TipsManager
 
 /**
  * Handles checkout logic and navigation to payment screen.
@@ -62,15 +64,32 @@ class CheckoutHandler(
         android.util.Log.d("CheckoutHandler", "Captured basket with ${checkoutBasket.items.size} items, total: $totalSatoshis sats")
         android.util.Log.d("CheckoutHandler", "Basket JSON size: ${checkoutBasketJson.length} chars")
 
-        val intent = Intent(activity, PaymentRequestActivity::class.java).apply {
-            putExtra(PaymentRequestActivity.EXTRA_PAYMENT_AMOUNT, totalSatoshis)
-            putExtra(PaymentRequestActivity.EXTRA_FORMATTED_AMOUNT, formattedAmount)
-            putExtra(PaymentRequestActivity.EXTRA_CHECKOUT_BASKET_JSON, checkoutBasketJson)
-            savedBasketId?.let { putExtra(PaymentRequestActivity.EXTRA_SAVED_BASKET_ID, it) }
+        // Clear basket before navigating away so UI state is clean when we return
+        basketManager.clearBasket()
+
+        // Decide whether to show tip selection first or go directly to payment request
+        val tipsManager = TipsManager.getInstance(activity)
+        if (tipsManager.tipsEnabled) {
+            // Route through beautiful tip selection screen first
+            val intent = Intent(activity, TipSelectionActivity::class.java).apply {
+                putExtra(TipSelectionActivity.EXTRA_PAYMENT_AMOUNT, totalSatoshis)
+                putExtra(TipSelectionActivity.EXTRA_FORMATTED_AMOUNT, formattedAmount)
+                putExtra(TipSelectionActivity.EXTRA_CHECKOUT_BASKET_JSON, checkoutBasketJson)
+                // Preserve saved basket association all the way through to PaymentRequestActivity
+                savedBasketId?.let { putExtra(PaymentRequestActivity.EXTRA_SAVED_BASKET_ID, it) }
+            }
+            activity.startActivity(intent)
+        } else {
+            // Go directly to payment request without tips
+            val intent = Intent(activity, PaymentRequestActivity::class.java).apply {
+                putExtra(PaymentRequestActivity.EXTRA_PAYMENT_AMOUNT, totalSatoshis)
+                putExtra(PaymentRequestActivity.EXTRA_FORMATTED_AMOUNT, formattedAmount)
+                putExtra(PaymentRequestActivity.EXTRA_CHECKOUT_BASKET_JSON, checkoutBasketJson)
+                savedBasketId?.let { putExtra(PaymentRequestActivity.EXTRA_SAVED_BASKET_ID, it) }
+            }
+            activity.startActivity(intent)
         }
 
-        basketManager.clearBasket()
-        activity.startActivity(intent)
         activity.finish()
     }
 
