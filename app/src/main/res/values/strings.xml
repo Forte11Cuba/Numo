@@ -632,4 +632,34 @@
         <item quantity="other">%1$d items</item>
     </plurals>
 
+    <!-- Auto-Withdraw Settings -->
+    <string name="auto_withdraw_title">Withdrawals</string>
+    <string name="auto_withdraw_enable_title">Auto-Withdraw</string>
+    <string name="auto_withdraw_enable_subtitle">Automatically withdraw when balance exceeds threshold</string>
+    
+    <string name="auto_withdraw_section_config">CONFIGURATION</string>
+    <string name="auto_withdraw_lightning_address_label">Lightning Address</string>
+    <string name="auto_withdraw_lightning_address_hint">you@wallet.com</string>
+    <string name="auto_withdraw_threshold_label">Threshold</string>
+    <string name="auto_withdraw_threshold_hint">Trigger withdrawal when balance reaches this amount</string>
+    <string name="auto_withdraw_percentage_label">Withdraw Percentage</string>
+    <string name="auto_withdraw_percentage_hint">Percentage of balance to withdraw (keep some for fees)</string>
+    
+    <string name="auto_withdraw_section_history">WITHDRAWAL HISTORY</string>
+    <string name="auto_withdraw_history_empty">No automatic withdrawals yet</string>
+    
+    <string name="auto_withdraw_status_completed">Completed</string>
+    <string name="auto_withdraw_status_pending">Pending</string>
+    <string name="auto_withdraw_status_failed">Failed</string>
+    
+    <string name="auto_withdraw_progress_started">Auto-withdrawing...</string>
+    <string name="auto_withdraw_progress_quote">Getting quote...</string>
+    <string name="auto_withdraw_progress_sending">Sending payment...</string>
+    <string name="auto_withdraw_progress_completed">Withdrawal completed!</string>
+    <string name="auto_withdraw_progress_failed">Withdrawal failed</string>
+
+    <!-- Settings - Withdrawals menu item -->
+    <string name="settings_item_withdrawals_title">Withdrawals</string>
+    <string name="settings_item_withdrawals_subtitle">Auto-withdraw settings and history</string>
+
 </resources>

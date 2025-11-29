@@ -10,6 +10,8 @@ import android.os.Vibrator
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
@@ -18,17 +20,25 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.electricdreams.numo.core.cashu.CashuWalletManager
 import com.electricdreams.numo.core.worker.BitcoinPriceWorker
+import com.electricdreams.numo.feature.autowithdraw.AutoWithdrawManager
+import com.electricdreams.numo.feature.autowithdraw.AutoWithdrawProgressListener
 import com.electricdreams.numo.feature.history.PaymentsHistoryActivity
 import com.electricdreams.numo.payment.PaymentMethodHandler
 import com.electricdreams.numo.ui.components.PosUiCoordinator
 
-class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback {
+class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback, AutoWithdrawProgressListener {
 
     private var nfcAdapter: android.nfc.NfcAdapter? = null
     private var bitcoinPriceWorker: BitcoinPriceWorker? = null
     private var vibrator: Vibrator? = null
     
     private lateinit var uiCoordinator: PosUiCoordinator
+    private lateinit var autoWithdrawManager: AutoWithdrawManager
+    
+    // Auto-withdraw progress views
+    private lateinit var progressContainer: View
+    private lateinit var progressText: android.widget.TextView
+    private lateinit var progressAmount: android.widget.TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +65,9 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         // Initialize UI coordinator which handles all UI logic
         uiCoordinator = PosUiCoordinator(this, bitcoinPriceWorker)
         uiCoordinator.initialize()
+
+        // Setup auto-withdraw manager and progress indicator
+        setupAutoWithdrawProgress()
 
         // Handle initial payment amount if provided
         uiCoordinator.handleInitialPaymentAmount(paymentAmount)
@@ -103,6 +116,16 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
     private fun setupNfcAdapter() {
         nfcAdapter = android.nfc.NfcAdapter.getDefaultAdapter(this)
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator?
+    }
+
+    private fun setupAutoWithdrawProgress() {
+        autoWithdrawManager = AutoWithdrawManager.getInstance(this)
+        autoWithdrawManager.setProgressListener(this)
+        
+        // Initialize progress views
+        progressContainer = findViewById<View>(R.id.auto_withdraw_progress_container)
+        progressText = findViewById<TextView>(R.id.progress_text)
+        progressAmount = findViewById<TextView>(R.id.progress_amount)
     }
 
     // Lifecycle methods
@@ -188,6 +211,67 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback 
         runOnUiThread { 
             // Feedback handled by PaymentResultHandler  
         } 
+    }
+
+    // AutoWithdrawProgressListener implementation
+    override fun onWithdrawStarted(mintUrl: String, amount: Long, lightningAddress: String) {
+        runOnUiThread {
+            val amountFormatted = com.electricdreams.numo.core.model.Amount(amount, com.electricdreams.numo.core.model.Amount.Currency.BTC)
+            progressText.text = getString(R.string.auto_withdraw_progress_started)
+            progressAmount.text = amountFormatted.toString()
+            showProgressIndicator()
+        }
+    }
+
+    override fun onWithdrawProgress(step: String, detail: String) {
+        runOnUiThread {
+            progressText.text = detail
+        }
+    }
+
+    override fun onWithdrawCompleted(mintUrl: String, amount: Long, fee: Long) {
+        runOnUiThread {
+            val amountFormatted = com.electricdreams.numo.core.model.Amount(amount, com.electricdreams.numo.core.model.Amount.Currency.BTC)
+            progressText.text = getString(R.string.auto_withdraw_progress_completed)
+            progressAmount.text = amountFormatted.toString()
+            
+            // Hide after 3 seconds
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                hideProgressIndicator()
+            }, 3000)
+        }
+    }
+
+    override fun onWithdrawFailed(mintUrl: String, error: String) {
+        runOnUiThread {
+            progressText.text = getString(R.string.auto_withdraw_progress_failed)
+            progressAmount.text = error
+            
+            // Hide after 5 seconds (longer for errors)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                hideProgressIndicator()
+            }, 5000)
+        }
+    }
+
+    private fun showProgressIndicator() {
+        progressContainer.visibility = View.VISIBLE
+        progressContainer.animate()
+            .translationY(0f)
+            .alpha(1f)
+            .setDuration(300)
+            .start()
+    }
+
+    private fun hideProgressIndicator() {
+        progressContainer.animate()
+            .translationY(-progressContainer.height.toFloat())
+            .alpha(0f)
+            .setDuration(300)
+            .withEndAction {
+                progressContainer.visibility = View.GONE
+            }
+            .start()
     }
 
     companion object {

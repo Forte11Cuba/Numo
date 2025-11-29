@@ -3,8 +3,11 @@ package com.electricdreams.numo.payment
 import android.os.Handler
 import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.electricdreams.numo.core.worker.BitcoinPriceWorker
+import com.electricdreams.numo.feature.autowithdraw.AutoWithdrawManager
 import com.electricdreams.numo.feature.history.PaymentsHistoryActivity
+import kotlinx.coroutines.launch
 
 /**
  * Handles payment success and error scenarios.
@@ -49,6 +52,18 @@ class PaymentResultHandler(
             mintUrl, 
             null
         )
+        
+        // Check for auto-withdrawal after successful payment
+        if (mintUrl != null) {
+            activity.lifecycleScope.launch {
+                try {
+                    val autoWithdrawManager = AutoWithdrawManager.getInstance(activity)
+                    autoWithdrawManager.checkAndTriggerWithdrawals(mintUrl)
+                } catch (e: Exception) {
+                    android.util.Log.e("PaymentResultHandler", "Error checking auto-withdrawals", e)
+                }
+            }
+        }
         
         // Delegate to callback for unified success handling (feedback + screen)
         mainHandler.post {
