@@ -5,9 +5,12 @@ import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
@@ -81,9 +84,14 @@ class TipSelectionActivity : AppCompatActivity() {
 
     private var bitcoinPriceWorker: BitcoinPriceWorker? = null
 
+    // Haptic feedback
+    private var vibrator: Vibrator? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tip_selection)
+
+        vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator?
 
         setupWindowSettings()
         initializeFromIntent()
@@ -360,6 +368,7 @@ class TipSelectionActivity : AppCompatActivity() {
             keyText.text = key
 
             keyButton.setOnClickListener {
+                vibrateKeypad()
                 onKeypadPress(key)
             }
 
@@ -775,7 +784,7 @@ class TipSelectionActivity : AppCompatActivity() {
                 .translationY(0f)
                 .alpha(1f)
                 .setDuration(400)
-                .setInterpolator(DecelerateInterpolator())
+                .setInterpolator(OvershootInterpolator(0.8f))
                 .start()
 
             confirmButton.animate()
@@ -875,6 +884,17 @@ class TipSelectionActivity : AppCompatActivity() {
         }
     }
 
+    private fun vibrateKeypad() {
+        vibrator?.let { v ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else {
+                @Suppress("DEPRECATION")
+                v.vibrate(VIBRATE_KEYPAD)
+            }
+        }
+    }
+
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }
@@ -888,5 +908,6 @@ class TipSelectionActivity : AppCompatActivity() {
         const val EXTRA_BASE_AMOUNT_SATS = "base_amount_sats"
         const val EXTRA_BASE_FORMATTED_AMOUNT = "base_formatted_amount"
         const val REQUEST_CODE_PAYMENT = 1002
+        private const val VIBRATE_KEYPAD = 20L
     }
 }
