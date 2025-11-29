@@ -538,6 +538,8 @@
     <string name="item_selection_basket_items_count">%1$d items</string>
     <string name="item_selection_charge_button">Charge</string>
     <string name="item_selection_charge_button_default">Charge</string>
+    <string name="pos_error_no_mints_configured">Add at least one mint in Settings → Mints before charging customers.</string>
+
     <string name="item_selection_save_button">Save</string>
     <string name="item_selection_saved_baskets_button">Saved</string>
     <string name="item_selection_save_basket">Save Basket</string>

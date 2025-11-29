@@ -1,12 +1,12 @@
 package com.electricdreams.numo.feature.items.handlers
 
-import android.view.View
-import com.electricdreams.numo.R
 import android.widget.Button
 import android.widget.TextView
+import com.electricdreams.numo.R
 import com.electricdreams.numo.core.model.Amount
 import com.electricdreams.numo.core.util.BasketManager
 import com.electricdreams.numo.core.util.CurrencyManager
+import com.electricdreams.numo.core.util.MintManager
 
 /**
  * Handles basket UI updates including total display and checkout button text.
@@ -114,9 +114,15 @@ class BasketUIHandler(
     /**
      * Update the checkout button text.
      * Total is already visible in the basket, so button just says "Charge".
+     * If no mints are configured, the button is disabled to prevent creating
+     * payment requests without any available mint.
      */
     fun updateCheckoutButton() {
-        checkoutButton.text = checkoutButton.context.getString(R.string.item_selection_charge_button)
+        val context = checkoutButton.context
+        val mintManager = MintManager.getInstance(context)
+
+        checkoutButton.text = context.getString(R.string.item_selection_charge_button)
+        checkoutButton.isEnabled = mintManager.hasAnyMints()
     }
 
     /**

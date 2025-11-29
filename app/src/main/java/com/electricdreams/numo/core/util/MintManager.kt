@@ -83,6 +83,12 @@ class MintManager private constructor(context: Context) {
     fun getAllowedMints(): List<String> = ArrayList(allowedMints)
 
     /**
+     * Returns true if at least one mint is configured.
+     * Used by UI to disable payment flows when no mints are available.
+     */
+    fun hasAnyMints(): Boolean = allowedMints.isNotEmpty()
+
+    /**
      * Get the preferred mint for Lightning payments.
      * Falls back to the first allowed mint if not set.
      */

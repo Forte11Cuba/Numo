@@ -13,6 +13,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.electricdreams.numo.R
+import com.electricdreams.numo.core.util.MintManager
 import com.electricdreams.numo.core.worker.BitcoinPriceWorker
 import com.electricdreams.numo.feature.history.PaymentsHistoryActivity
 import com.electricdreams.numo.feature.items.ItemSelectionActivity
@@ -51,6 +52,7 @@ class PosUiCoordinator(
     private lateinit var paymentResultHandler: PaymentResultHandler
     private lateinit var themeManager: ThemeManager
     private lateinit var nfcPaymentProcessor: NfcPaymentProcessor
+    private lateinit var mintManager: MintManager
 
     /** Initialize all UI components and managers */
     fun initialize() {
@@ -187,6 +189,9 @@ class PosUiCoordinator(
         themeManager = ThemeManager(activity)
         themeManager.applyTheme(amountDisplay, secondaryAmountDisplay, errorMessage, switchCurrencyButton, submitButton)
 
+        // Initialize mint manager for enabling/disabling charge button based on mint availability
+        mintManager = MintManager.getInstance(activity)
+
         // Initialize amount display manager
         amountDisplayManager = AmountDisplayManager(
             activity, amountDisplay, secondaryAmountDisplay, switchCurrencyButton, submitButton, bitcoinPriceWorker
@@ -251,6 +256,17 @@ class PosUiCoordinator(
 
         // Submit button
         submitButton.setOnClickListener {
+            // Do not allow charging if no mints are configured
+            if (!mintManager.hasAnyMints()) {
+                // Optional: show a gentle message guiding user to configure mints
+                android.widget.Toast.makeText(
+                    activity,
+                    activity.getString(R.string.pos_error_no_mints_configured),
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+
             if (amountDisplayManager.requestedAmount > 0) {
                 showChargeButtonSpinner()
                 val formattedAmount = amountDisplay.text.toString()
