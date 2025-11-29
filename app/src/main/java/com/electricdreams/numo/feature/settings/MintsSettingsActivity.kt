@@ -5,7 +5,9 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -14,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
 import com.electricdreams.numo.R
 import com.electricdreams.numo.core.cashu.CashuWalletManager
@@ -23,7 +26,6 @@ import com.electricdreams.numo.core.util.MintManager
 import com.electricdreams.numo.feature.scanner.QRScannerActivity
 import com.electricdreams.numo.ui.components.AddMintInputCard
 import com.electricdreams.numo.ui.components.MintListItem
-import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,9 +34,19 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 /**
- * Clean, Material Design mint management screen.
- * Features a prominent "Lightning Mint" hero card showing the primary mint for receiving payments,
- * with a clean list of all mints below.
+ * Premium Apple/Google-like mint management screen.
+ * 
+ * Matches AutoWithdrawSettingsActivity design patterns:
+ * - Flat cards with 0dp elevation
+ * - Section headers with uppercase styling
+ * - Clean white card backgrounds
+ * - Smooth micro-animations
+ * 
+ * Features:
+ * - Lightning Mint hero card showing primary receive mint
+ * - Clean list of all mints with expandable action buttons
+ * - Long-press to reveal delete/info actions
+ * - Tap to select as Lightning mint
  */
 class MintsSettingsActivity : AppCompatActivity() {
 
@@ -47,7 +59,8 @@ class MintsSettingsActivity : AppCompatActivity() {
     private lateinit var backButton: ImageButton
     private lateinit var resetButton: ImageButton
     private lateinit var lightningMintSection: View
-    private lateinit var lightningMintCard: MaterialCardView
+    private lateinit var lightningMintCard: CardView
+    private lateinit var lightningIconContainer: FrameLayout
     private lateinit var lightningMintIcon: ImageView
     private lateinit var lightningMintName: TextView
     private lateinit var lightningMintUrlText: TextView
@@ -101,6 +114,7 @@ class MintsSettingsActivity : AppCompatActivity() {
         resetButton = findViewById(R.id.reset_button)
         lightningMintSection = findViewById(R.id.lightning_mint_section)
         lightningMintCard = findViewById(R.id.lightning_mint_card)
+        lightningIconContainer = findViewById(R.id.lightning_icon_container)
         lightningMintIcon = findViewById(R.id.lightning_mint_icon)
         lightningMintName = findViewById(R.id.lightning_mint_name)
         lightningMintUrlText = findViewById(R.id.lightning_mint_url)
@@ -157,7 +171,6 @@ class MintsSettingsActivity : AppCompatActivity() {
             
             // Auto-select lightning mint if none selected
             if (selectedLightningMint == null || !mints.contains(selectedLightningMint)) {
-                // Select mint with highest balance
                 val highestBalanceMint = mints.maxByOrNull { mintBalances[it] ?: 0L }
                 highestBalanceMint?.let { setLightningMint(it, animate = false) }
             }
@@ -209,12 +222,24 @@ class MintsSettingsActivity : AppCompatActivity() {
             
             item.setOnMintItemListener(object : MintListItem.OnMintItemListener {
                 override fun onMintTapped(url: String) {
+                    // Collapse any other expanded items
+                    mintItems.values.forEach { it.collapseIfExpanded() }
                     setLightningMint(url, animate = true)
                 }
 
                 override fun onMintLongPressed(url: String): Boolean {
+                    // Collapse other items first
+                    mintItems.values.filter { it.getMintUrl() != url }
+                        .forEach { it.collapseIfExpanded() }
+                    return false // Let the item handle expansion
+                }
+
+                override fun onDeleteClicked(url: String) {
                     showRemoveConfirmation(url)
-                    return true
+                }
+
+                override fun onInfoClicked(url: String) {
+                    openMintDetails(url)
                 }
             })
 
@@ -245,6 +270,21 @@ class MintsSettingsActivity : AppCompatActivity() {
         updateLightningMintCard()
         
         if (animate) {
+            // Animate lightning card update
+            lightningMintCard.animate()
+                .scaleX(0.98f)
+                .scaleY(0.98f)
+                .setDuration(100)
+                .withEndAction {
+                    lightningMintCard.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(200)
+                        .setInterpolator(DecelerateInterpolator())
+                        .start()
+                }
+                .start()
+            
             Toast.makeText(this, R.string.mints_lightning_changed, Toast.LENGTH_SHORT).show()
         }
     }
@@ -277,6 +317,7 @@ class MintsSettingsActivity : AppCompatActivity() {
                 val bitmap = BitmapFactory.decodeFile(cachedFile.absolutePath)
                 if (bitmap != null) {
                     lightningMintIcon.setImageBitmap(bitmap)
+                    lightningMintIcon.clearColorFilter()
                     return
                 }
             } catch (e: Exception) {
@@ -285,12 +326,20 @@ class MintsSettingsActivity : AppCompatActivity() {
         }
         
         lightningMintIcon.setImageResource(R.drawable.ic_bitcoin)
+        lightningMintIcon.setColorFilter(getColor(R.color.color_primary))
+    }
+
+    private fun openMintDetails(mintUrl: String) {
+        val intent = Intent(this, MintDetailsActivity::class.java).apply {
+            putExtra(MintDetailsActivity.EXTRA_MINT_URL, mintUrl)
+        }
+        startActivity(intent)
     }
 
     private fun showRemoveConfirmation(mintUrl: String) {
         val displayName = mintManager.getMintDisplayName(mintUrl)
         
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_Numo_Dialog)
             .setTitle(getString(R.string.mints_remove_title))
             .setMessage(getString(R.string.mints_remove_message, displayName))
             .setPositiveButton(getString(R.string.mints_remove_confirm)) { _, _ ->
@@ -314,7 +363,7 @@ class MintsSettingsActivity : AppCompatActivity() {
                 val mints = mintManager.getAllowedMints()
                 val newLightning = mints.maxByOrNull { mintBalances[it] ?: 0L }
                 if (newLightning != null) {
-                    setLightningMint(newLightning, animate = false)
+                    setLightningMint(newLightning, animate = true)
                 } else {
                     selectedLightningMint = null
                     lightningMintSection.visibility = View.GONE
@@ -436,7 +485,7 @@ class MintsSettingsActivity : AppCompatActivity() {
     }
 
     private fun showResetConfirmation() {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_Numo_Dialog)
             .setTitle(getString(R.string.mints_reset_title))
             .setMessage(getString(R.string.mints_reset_message))
             .setPositiveButton(getString(R.string.mints_reset_confirm)) { _, _ ->
@@ -475,7 +524,7 @@ class MintsSettingsActivity : AppCompatActivity() {
             .alpha(1f)
             .translationY(0f)
             .setDuration(350)
-            .setInterpolator(DecelerateInterpolator())
+            .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
 
         // Add mint card entrance

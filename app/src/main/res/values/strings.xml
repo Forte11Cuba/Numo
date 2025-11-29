@@ -762,4 +762,24 @@
     <string name="cd_mint_icon">Mint icon</string>
     <string name="cd_mint_selected">Selected as Lightning mint</string>
 
+    <!-- Mint Actions -->
+    <string name="mint_action_info">Info</string>
+    <string name="mint_action_delete">Delete</string>
+    <string name="mints_add_section">Add Mint</string>
+
+    <!-- Mint Details Screen -->
+    <string name="mint_details_title">Mint Details</string>
+    <string name="mint_details_about">About</string>
+    <string name="mint_details_announcement">Announcement</string>
+    <string name="mint_details_contact">Contact</string>
+    <string name="mint_details_details">Details</string>
+    <string name="mint_details_actions">Actions</string>
+    <string name="mint_details_url">URL</string>
+    <string name="mint_details_version">Version</string>
+    <string name="mint_details_features">Features</string>
+    <string name="mint_details_copy_url">Copy Mint URL</string>
+    <string name="mint_details_delete">Delete Mint</string>
+    <string name="mint_details_copied">Copied to clipboard</string>
+    <string name="mint_details_copy">Copy</string>
+
 </resources>

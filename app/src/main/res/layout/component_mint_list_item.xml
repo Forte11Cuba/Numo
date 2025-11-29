@@ -1,34 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="6dp">
+    android:orientation="vertical">
 
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/mint_card"
+    <!-- Main Row Content -->
+    <LinearLayout
+        android:id="@+id/mint_item_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="1dp"
-        app:cardBackgroundColor="@color/color_bg_white"
-        app:rippleColor="@color/color_ripple">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="16dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="16dp">
+        <!-- Mint Icon Container with Selection Badge -->
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
 
-            <!-- Mint Icon -->
             <FrameLayout
                 android:id="@+id/icon_container"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="@drawable/bg_circle_subtle"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent">
+                android:background="@drawable/bg_circle_subtle">
 
                 <ImageView
                     android:id="@+id/mint_icon"
@@ -40,72 +39,152 @@
 
             </FrameLayout>
 
-            <!-- Check Icon (shown when selected as primary) -->
+            <!-- Selection Badge (checkmark) - positioned bottom-right -->
             <ImageView
-                android:id="@+id/check_icon"
+                android:id="@+id/selected_badge"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:src="@drawable/ic_check_small"
-                app:tint="@color/color_success_green"
+                android:layout_gravity="bottom|end"
+                android:src="@drawable/ic_check_badge"
                 android:visibility="gone"
-                android:contentDescription="@string/cd_mint_selected"
-                app:layout_constraintEnd_toEndOf="@id/icon_container"
-                app:layout_constraintBottom_toBottomOf="@id/icon_container"
-                android:translationX="4dp"
-                android:translationY="4dp" />
+                android:contentDescription="@string/cd_mint_selected" />
 
-            <!-- Mint Name -->
+        </FrameLayout>
+
+        <!-- Text Content -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="12dp">
+
             <TextView
                 android:id="@+id/mint_name"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_marginEnd="12dp"
                 android:text="Mint Name"
                 android:textSize="16sp"
                 android:textColor="@color/color_text_primary"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:ellipsize="end"
-                app:layout_constraintStart_toEndOf="@id/icon_container"
-                app:layout_constraintEnd_toStartOf="@id/mint_balance"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/mint_url" />
+                android:ellipsize="end" />
 
-            <!-- Mint URL -->
             <TextView
                 android:id="@+id/mint_url"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_marginEnd="12dp"
                 android:layout_marginTop="2dp"
                 android:text="mint.example.com"
                 android:textSize="13sp"
                 android:textColor="@color/color_text_tertiary"
-                android:fontFamily="sans-serif"
                 android:maxLines="1"
-                android:ellipsize="end"
-                app:layout_constraintStart_toEndOf="@id/icon_container"
-                app:layout_constraintEnd_toStartOf="@id/mint_balance"
-                app:layout_constraintTop_toBottomOf="@id/mint_name"
-                app:layout_constraintBottom_toBottomOf="parent" />
+                android:ellipsize="end" />
 
-            <!-- Balance -->
+        </LinearLayout>
+
+        <!-- Balance -->
+        <TextView
+            android:id="@+id/balance_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="₿0"
+            android:textSize="15sp"
+            android:textColor="@color/color_text_secondary"
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Chevron -->
+        <ImageView
+            android:id="@+id/chevron"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/color_text_tertiary"
+            android:contentDescription="@null" />
+
+    </LinearLayout>
+
+    <!-- Expandable Action Buttons -->
+    <LinearLayout
+        android:id="@+id/actions_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="16dp"
+        android:visibility="gone">
+
+        <!-- Info Button -->
+        <LinearLayout
+            android:id="@+id/info_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:background="@drawable/bg_button_secondary"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:layout_marginEnd="12dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_info"
+                app:tint="@color/color_text_primary"
+                android:layout_marginEnd="8dp" />
+
             <TextView
-                android:id="@+id/mint_balance"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="₿0"
-                android:textSize="15sp"
+                android:text="@string/mint_action_info"
+                android:textSize="14sp"
                 android:textColor="@color/color_text_primary"
-                android:fontFamily="sans-serif-medium"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent" />
+                android:fontFamily="sans-serif-medium" />
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
 
-    </com.google.android.material.card.MaterialCardView>
+        <!-- Delete Button -->
+        <LinearLayout
+            android:id="@+id/delete_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:background="@drawable/bg_button_danger"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:clickable="true"
+            android:focusable="true">
 
-</FrameLayout>
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_trash"
+                app:tint="@color/color_error"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/mint_action_delete"
+                android:textSize="14sp"
+                android:textColor="@color/color_error"
+                android:fontFamily="sans-serif-medium" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="84dp"
+        android:background="@color/color_divider" />
+
+</LinearLayout>
