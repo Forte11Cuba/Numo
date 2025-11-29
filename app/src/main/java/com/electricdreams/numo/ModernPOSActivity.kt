@@ -35,9 +35,14 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback,
     private lateinit var uiCoordinator: PosUiCoordinator
     private lateinit var autoWithdrawManager: AutoWithdrawManager
     
-    // Auto-withdraw progress views
+    // Auto-withdraw progress views (Dynamic Island style)
     private lateinit var progressContainer: View
-    private lateinit var progressText: android.widget.TextView
+    private lateinit var dynamicIsland: View
+    private lateinit var progressSpinner: View
+    private lateinit var successIcon: View
+    private lateinit var errorIcon: View
+    private lateinit var progressTitle: android.widget.TextView
+    private lateinit var progressSubtitle: android.widget.TextView
     private lateinit var progressAmount: android.widget.TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,10 +127,18 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback,
         autoWithdrawManager = AutoWithdrawManager.getInstance(this)
         autoWithdrawManager.setProgressListener(this)
         
-        // Initialize progress views
+        // Initialize progress views (Dynamic Island style)
         progressContainer = findViewById<View>(R.id.auto_withdraw_progress_container)
-        progressText = findViewById<TextView>(R.id.progress_text)
+        dynamicIsland = findViewById<View>(R.id.dynamic_island)
+        progressSpinner = findViewById<View>(R.id.progress_spinner)
+        successIcon = findViewById<View>(R.id.success_icon)
+        errorIcon = findViewById<View>(R.id.error_icon)
+        progressTitle = findViewById<TextView>(R.id.progress_title)
+        progressSubtitle = findViewById<TextView>(R.id.progress_subtitle)
         progressAmount = findViewById<TextView>(R.id.progress_amount)
+        
+        // Initial state: hidden above screen
+        progressContainer.translationY = -200f
     }
 
     // Lifecycle methods
@@ -216,24 +229,43 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback,
     // AutoWithdrawProgressListener implementation
     override fun onWithdrawStarted(mintUrl: String, amount: Long, lightningAddress: String) {
         runOnUiThread {
-            val amountFormatted = com.electricdreams.numo.core.model.Amount(amount, com.electricdreams.numo.core.model.Amount.Currency.BTC)
-            progressText.text = getString(R.string.auto_withdraw_progress_started)
-            progressAmount.text = amountFormatted.toString()
+            // Reset to progress state
+            dynamicIsland.setBackgroundResource(R.drawable.bg_dynamic_island)
+            progressSpinner.visibility = View.VISIBLE
+            successIcon.visibility = View.GONE
+            errorIcon.visibility = View.GONE
+            
+            // Format amount
+            val amountFormatted = java.text.NumberFormat.getNumberInstance().format(amount)
+            progressTitle.text = getString(R.string.auto_withdraw_progress_sending)
+            progressSubtitle.text = lightningAddress
+            progressAmount.text = amountFormatted
+            
             showProgressIndicator()
         }
     }
 
     override fun onWithdrawProgress(step: String, detail: String) {
         runOnUiThread {
-            progressText.text = detail
+            progressSubtitle.text = detail
         }
     }
 
     override fun onWithdrawCompleted(mintUrl: String, amount: Long, fee: Long) {
         runOnUiThread {
-            val amountFormatted = com.electricdreams.numo.core.model.Amount(amount, com.electricdreams.numo.core.model.Amount.Currency.BTC)
-            progressText.text = getString(R.string.auto_withdraw_progress_completed)
-            progressAmount.text = amountFormatted.toString()
+            // Switch to success state with green background
+            dynamicIsland.setBackgroundResource(R.drawable.bg_dynamic_island_success)
+            progressSpinner.visibility = View.GONE
+            successIcon.visibility = View.VISIBLE
+            errorIcon.visibility = View.GONE
+            
+            val amountFormatted = java.text.NumberFormat.getNumberInstance().format(amount)
+            progressTitle.text = getString(R.string.auto_withdraw_progress_completed)
+            progressSubtitle.text = "Fee: ${java.text.NumberFormat.getNumberInstance().format(fee)} sats"
+            progressAmount.text = amountFormatted
+            
+            // Haptic feedback for success
+            vibrator?.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
             
             // Hide after 3 seconds
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -244,32 +276,67 @@ class ModernPOSActivity : AppCompatActivity(), SatocashWallet.OperationFeedback,
 
     override fun onWithdrawFailed(mintUrl: String, error: String) {
         runOnUiThread {
-            progressText.text = getString(R.string.auto_withdraw_progress_failed)
-            progressAmount.text = error
+            // Switch to error state with red background
+            dynamicIsland.setBackgroundResource(R.drawable.bg_dynamic_island_error)
+            progressSpinner.visibility = View.GONE
+            successIcon.visibility = View.GONE
+            errorIcon.visibility = View.VISIBLE
+            
+            progressTitle.text = getString(R.string.auto_withdraw_progress_failed)
+            progressSubtitle.text = error
+            progressAmount.visibility = View.GONE
+            
+            // Haptic feedback for error
+            vibrator?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1))
             
             // Hide after 5 seconds (longer for errors)
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 hideProgressIndicator()
+                progressAmount.visibility = View.VISIBLE
             }, 5000)
         }
     }
 
     private fun showProgressIndicator() {
         progressContainer.visibility = View.VISIBLE
+        
+        // Spring-like bounce animation from top
         progressContainer.animate()
             .translationY(0f)
             .alpha(1f)
+            .setDuration(400)
+            .setInterpolator(android.view.animation.OvershootInterpolator(0.8f))
+            .start()
+        
+        // Scale the island up slightly
+        dynamicIsland.scaleX = 0.9f
+        dynamicIsland.scaleY = 0.9f
+        dynamicIsland.animate()
+            .scaleX(1f)
+            .scaleY(1f)
             .setDuration(300)
+            .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
             .start()
     }
 
     private fun hideProgressIndicator() {
+        // Shrink and slide up
+        dynamicIsland.animate()
+            .scaleX(0.8f)
+            .scaleY(0.8f)
+            .setDuration(200)
+            .start()
+        
         progressContainer.animate()
-            .translationY(-progressContainer.height.toFloat())
+            .translationY(-200f)
             .alpha(0f)
             .setDuration(300)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
             .withEndAction {
                 progressContainer.visibility = View.GONE
+                // Reset scale for next use
+                dynamicIsland.scaleX = 1f
+                dynamicIsland.scaleY = 1f
             }
             .start()
     }

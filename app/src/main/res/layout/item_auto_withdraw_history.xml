@@ -1,70 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:paddingHorizontal="24dp"
-    android:paddingVertical="12dp"
-    android:gravity="center_vertical">
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="16dp">
 
-    <!-- Status Icon -->
-    <ImageView
-        android:id="@+id/status_icon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="16dp"
-        android:src="@drawable/ic_lightning_bolt"
-        app:tint="@color/color_primary_green" />
+    <!-- Status Icon Container -->
+    <FrameLayout
+        android:id="@+id/icon_container"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_circle"
+        android:backgroundTint="@color/color_bg_secondary"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-    <!-- Content -->
-    <LinearLayout
+        <ImageView
+            android:id="@+id/status_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_lightning_bolt"
+            app:tint="@color/color_success_green" />
+
+    </FrameLayout>
+
+    <!-- Amount -->
+    <TextView
+        android:id="@+id/amount_text"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="12dp"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:textColor="@color/color_text_primary"
+        android:textSize="17sp"
+        app:layout_constraintEnd_toStartOf="@id/status_badge"
+        app:layout_constraintStart_toEndOf="@id/icon_container"
+        app:layout_constraintTop_toTopOf="@id/icon_container"
+        tools:text="10,000 sats" />
 
-        <!-- Amount and destination -->
-        <TextView
-            android:id="@+id/amount_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textColor="@color/color_text_primary"
-            android:fontFamily="sans-serif-medium" />
+    <!-- Lightning Address -->
+    <TextView
+        android:id="@+id/address_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="12dp"
+        android:ellipsize="middle"
+        android:fontFamily="sans-serif"
+        android:maxLines="1"
+        android:textColor="@color/color_text_secondary"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toStartOf="@id/status_badge"
+        app:layout_constraintStart_toEndOf="@id/icon_container"
+        app:layout_constraintTop_toBottomOf="@id/amount_text"
+        tools:text="user@walletofsatoshi.com" />
 
-        <!-- Lightning address -->
-        <TextView
-            android:id="@+id/address_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:textColor="@color/color_text_secondary"
-            android:layout_marginTop="2dp"
-            android:ellipsize="middle"
-            android:maxLines="1" />
+    <!-- Timestamp -->
+    <TextView
+        android:id="@+id/timestamp_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="12dp"
+        android:fontFamily="sans-serif"
+        android:textColor="@color/color_text_tertiary"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/icon_container"
+        app:layout_constraintTop_toBottomOf="@id/address_text"
+        tools:text="Jan 15, 2025 • 14:30" />
 
-        <!-- Timestamp -->
-        <TextView
-            android:id="@+id/timestamp_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="@color/color_text_tertiary"
-            android:layout_marginTop="2dp" />
-    </LinearLayout>
-
-    <!-- Status badge -->
+    <!-- Status Badge -->
     <TextView
         android:id="@+id/status_badge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="4dp"
-        android:textSize="11sp"
-        android:textColor="@color/color_bg_white"
+        android:background="@drawable/bg_status_pill_success"
         android:fontFamily="sans-serif-medium"
-        android:textAllCaps="true"
-        android:background="@drawable/bg_badge_success" />
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="4dp"
+        android:text="Sent"
+        android:textColor="@color/color_success_green"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="@id/icon_container"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/icon_container"
+        tools:text="Sent" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
