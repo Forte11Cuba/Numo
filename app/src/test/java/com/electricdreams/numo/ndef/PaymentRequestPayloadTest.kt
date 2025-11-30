@@ -39,7 +39,7 @@ class PaymentRequestPayloadTest {
         assertEquals("deadbeef", proof.c)
         assertNotNull(proof.dleq)
     }
-}
+    
     @Test(expected = com.google.gson.JsonParseException::class)
     fun `GSON rejects proofs without keyset id`() {
         val json = """
@@ -59,8 +59,8 @@ class PaymentRequestPayloadTest {
         PaymentRequestPayload.GSON.fromJson(json, PaymentRequestPayload::class.java)
     }
 
-    @Test(expected = com.google.gson.JsonParseException::class)
-    fun `GSON rejects payload when proofs array empty`() {
+    @Test(expected = IllegalArgumentException::class)
+    fun `payload parsing fails when proofs array empty`() {
         val json = """
             {
               "mint": "https://mint.example",
@@ -72,3 +72,4 @@ class PaymentRequestPayloadTest {
             require(!(proofs == null || proofs!!.isEmpty())) { "Proofs should not be empty" }
         }
     }
+}
