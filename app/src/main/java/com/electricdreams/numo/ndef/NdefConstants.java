@@ -54,6 +54,18 @@ public class NdefConstants {
     public static final byte TEXT_RECORD_TYPE = 0x54; // 'T'
     public static final byte URI_RECORD_TYPE = 0x55;  // 'U'
     
+    // Type Name Format (TNF) values
+    public static final byte TNF_EMPTY = 0x00;
+    public static final byte TNF_WELL_KNOWN = 0x01;
+    public static final byte TNF_MIME_MEDIA = 0x02;
+    
+    // MIME type for binary-encoded Cashu tokens transported via NDEF
+    // The raw payload is interpreted using org.cashudevkit.Token.from_raw_bytes
+    // and then re-encoded as a canonical string (e.g., crawB...).
+    // Using application/octet-stream keeps the on-tag representation generic
+    // while the app-specific semantics are defined here.
+    public static final String CASHU_BINARY_MIME_TYPE = "application/octet-stream";
+    
     // Header flags
     public static final byte SHORT_RECORD_FLAG = 0x10; // SR flag
     public static final byte TNF_MASK = 0x07;          // Type Name Format mask

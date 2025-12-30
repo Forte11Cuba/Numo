@@ -155,8 +155,18 @@ object CashuPaymentHelper {
     // === Token helpers =====================================================
 
     @JvmStatic
-    fun isCashuToken(text: String?): Boolean =
-        text != null && (text.startsWith("cashuB") || text.startsWith("cashuA"))
+    fun isCashuToken(text: String?): Boolean {
+        if (text == null) {
+            return false
+        }
+
+        return text.startsWith("cashuA") ||
+            text.startsWith("cashuB") ||
+            // Binary-encoded Cashu tokens produced by CDK encode() after
+            // Token.from_raw_bytes(...) use the crawB prefix. Treat them as
+            // first-class Cashu tokens for validation and redemption.
+            text.startsWith("crawB")
+    }
 
     @JvmStatic
     fun extractCashuToken(text: String?): String? {
@@ -199,7 +209,7 @@ object CashuPaymentHelper {
             return token
         }
 
-        val prefixes = arrayOf("cashuA", "cashuB")
+        val prefixes = arrayOf("cashuA", "cashuB", "crawB")
         for (prefix in prefixes) {
             val tokenIndex = text.indexOf(prefix)
             if (tokenIndex >= 0) {

@@ -1,6 +1,7 @@
 package com.electricdreams.numo.ndef;
 
 import android.util.Log;
+import org.cashudevkit.Token;
 import java.util.Arrays;
 
 /**
@@ -66,6 +67,7 @@ public class NdefMessageParser {
     }
     
     /**
+     * Parse an NDEF record starting at the given offset.
      * Parse an NDEF record starting at the given offset
      */
     private void parseNdefRecord(byte[] ndefData, int offset) {
@@ -150,16 +152,29 @@ public class NdefMessageParser {
         String typeStr = new String(typeField);
         Log.i(TAG, "Record type: " + typeStr + " (hex: " + NdefUtils.bytesToHex(typeField) + ")");
         
-        // For text records, verify the record type is "T" (0x54)
-        // For URI records, verify the record type is "U" (0x55)
-        boolean isTextRecord = (typeLength == 1 && ndefData[typeFieldStart] == NdefConstants.TEXT_RECORD_TYPE);
-        boolean isUriRecord = (typeLength == 1 && ndefData[typeFieldStart] == NdefConstants.URI_RECORD_TYPE);
-        
+        // For text records, verify the record type is "T" (0x54) and TNF is well-known
+        // For URI records, verify the record type is "U" (0x55) and TNF is well-known
+        boolean isTextRecord =
+                (tnf == NdefConstants.TNF_WELL_KNOWN &&
+                 typeLength == 1 &&
+                 ndefData[typeFieldStart] == NdefConstants.TEXT_RECORD_TYPE);
+
+        boolean isUriRecord =
+                (tnf == NdefConstants.TNF_WELL_KNOWN &&
+                 typeLength == 1 &&
+                 ndefData[typeFieldStart] == NdefConstants.URI_RECORD_TYPE);
+
+        // Binary-encoded Cashu tokens are transported as MIME media records
+        boolean isCashuBinaryMimeRecord =
+                (tnf == NdefConstants.TNF_MIME_MEDIA &&
+                 typeStr.equalsIgnoreCase(NdefConstants.CASHU_BINARY_MIME_TYPE));
+
         Log.i(TAG, "Is Text Record: " + isTextRecord);
         Log.i(TAG, "Is URI Record: " + isUriRecord);
-        
-        if (!isTextRecord && !isUriRecord) {
-            Log.w(TAG, "NDEF message is neither a Text Record nor URI Record. Type: " + 
+        Log.i(TAG, "Is Cashu Binary MIME Record: " + isCashuBinaryMimeRecord);
+
+        if (!isTextRecord && !isUriRecord && !isCashuBinaryMimeRecord) {
+            Log.w(TAG, "NDEF message is not Text, URI, or Cashu Binary MIME. Type: " +
                   NdefUtils.bytesToHex(typeField) + ", returning");
             return;
         }
@@ -173,10 +188,59 @@ public class NdefMessageParser {
             return;
         }
         
+        if (payloadStart + payloadLength > ndefData.length) {
+            Log.e(TAG, "Payload exceeds data bounds: " +
+                  payloadStart + " + " + payloadLength + " > " + ndefData.length);
+            return;
+        }
+
         if (isTextRecord) {
             parseTextRecord(ndefData, payloadStart, payloadLength);
         } else if (isUriRecord) {
             parseUriRecord(ndefData, payloadStart, payloadLength);
+        } else if (isCashuBinaryMimeRecord) {
+            parseCashuBinaryTokenRecord(ndefData, payloadStart, payloadLength);
+        }
+    }
+
+    /**
+     * Parse a binary-encoded Cashu token carried in an NDEF MIME record.
+     *
+     * The record is expected to have TNF_MIME_MEDIA and type
+     * {@link NdefConstants#CASHU_BINARY_MIME_TYPE}. The payload consists of
+     * raw bytes that can be decoded via {@link Token#from_raw_bytes(byte[])}.
+     * The resulting token is re-encoded to its canonical string form and
+     * forwarded to the {@link NdefProcessor.NdefMessageCallback} as if it
+     * had been received as a textual Cashu token.
+     */
+    private void parseCashuBinaryTokenRecord(byte[] ndefData, int payloadStart, int payloadLength) {
+        try {
+            byte[] payloadBytes = Arrays.copyOfRange(
+                    ndefData,
+                    payloadStart,
+                    payloadStart + payloadLength
+            );
+
+            Log.i(TAG, "Cashu binary payload length: " + payloadBytes.length);
+            Log.i(TAG, "Cashu binary payload (hex): " +
+                    NdefUtils.bytesToHex(Arrays.copyOf(payloadBytes, Math.min(payloadBytes.length, 64))));
+
+            // Parse raw bytes into a CDK Token instance via the Kotlin companion
+            Token cdkToken = Token.Companion.fromRawBytes(payloadBytes);
+
+            // Encode to canonical string representation (e.g., crawB...)
+            String encodedToken = cdkToken.encode();
+
+            Log.i(TAG, "Decoded Cashu token from binary MIME payload: " + encodedToken);
+
+            if (callback != null) {
+                Log.i(TAG, "Calling onNdefMessageReceived with Cashu token from binary payload");
+                callback.onNdefMessageReceived(encodedToken);
+            } else {
+                Log.e(TAG, "Callback is null, can't deliver binary Cashu token");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing Cashu binary MIME record: " + e.getMessage(), e);
         }
     }
     
