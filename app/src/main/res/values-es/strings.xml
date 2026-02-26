@@ -7,7 +7,7 @@
     <string name="tips_settings_title">Propinas</string>
     <string name="tips_settings_description">Permite a los clientes añadir una propina al pagar. Las propinas predefinidas aparecerán como botones de selección rápida en la pantalla de pago.</string>
     <string name="tips_settings_enable_label">Activar propinas</string>
-    <string name="tips_settings_presets_header">PROPINA PREDEFINIDA</string>
+    <string name="tips_settings_presets_header">PROPINAS PREDEFINIDAS</string>
     <string name="tips_settings_presets_description">Configura porcentajes de propina de selección rápida. Los clientes también pueden introducir un importe personalizado.</string>
     <string name="tips_settings_add_preset">Añadir propina</string>
     <string name="tips_settings_reset_defaults">Restablecer valores predeterminados</string>
@@ -103,7 +103,7 @@
     <!-- Onboarding / Choose Path -->
     <string name="onboarding_setup_title">Configura tu cartera</string>
     <string name="onboarding_setup_subtitle">Elige cómo quieres empezar</string>
-    <string name="onboarding_create_wallet_title">Crear cartera nuevo</string>
+    <string name="onboarding_create_wallet_title">Crear cartera nueva</string>
     <string name="onboarding_create_wallet_subtitle">Empieza desde cero con una nueva frase semilla</string>
     <string name="onboarding_restore_wallet_title">Restaurar desde copia de seguridad</string>
     <string name="onboarding_restore_wallet_subtitle">Usa tu frase semilla existente</string>
@@ -157,14 +157,14 @@
     <string name="onboarding_success_restored_title">Cartera restaurada</string>
     <string name="onboarding_success_restored_recovered">Se han recuperado %1$d sats</string>
     <string name="onboarding_success_restored_total_balance">Saldo total: %1$d sats</string>
-    <string name="onboarding_success_created_title">Cartera creado</string>
+    <string name="onboarding_success_created_title">Cartera creada</string>
     <string name="onboarding_success_created_subtitle">Tu cartera está lista para usar</string>
     <string name="onboarding_success_balance_by_mint">SALDO POR MINT</string>
     <string name="onboarding_enter_wallet_button">Acceder a cartera</string>
 
     <!-- Onboarding / Errors -->
-    <string name="onboarding_error_creating_wallet">Error al crear el cartera: %1$s</string>
-    <string name="onboarding_error_initializing_wallet">Error al inicializar el cartera: %1$s</string>
+    <string name="onboarding_error_creating_wallet">Error al crear la cartera: %1$s</string>
+    <string name="onboarding_error_initializing_wallet">Error al inicializar la cartera: %1$s</string>
 
     <!-- Restore Wallet (standalone screen) -->
     <string name="restore_warning_title">Advertencia importante</string>
@@ -208,8 +208,8 @@
     <string name="pos_error_no_mints_configured">Añade al menos un mint en Ajustes → Mints antes de cobrar a los clientes.</string>
 
     <!-- Mints Lightning Section (Spanish) -->
-    <string name="mints_swap_unknown_mints_title">Aceptar pagos de mints desconocidas</string>
-    <string name="mints_swap_unknown_mints_subtitle">Cuando está activado, los tokens de mints desconocidas se intercambian automáticamente a tu mint Lightning.</string>
+    <string name="mints_swap_unknown_mints_title">Aceptar pagos de mints desconocidos</string>
+    <string name="mints_swap_unknown_mints_subtitle">Cuando está activado, los tokens de mints desconocidos se intercambian automáticamente a tu mint Lightning.</string>
 
     <!-- Empty State - Items -->
     <string name="empty_state_items_title">Crea tu catálogo</string>
@@ -230,7 +230,7 @@
     <string name="withdraw_tab_cashu">Token Cashu</string>
 
     <string name="withdraw_cashu_amount_card_title">Cantidad</string>
-    <string name="withdraw_cashu_amount_card_subtitle">Ingresa la cantidad para crear el token</string>
+    <string name="withdraw_cashu_amount_card_subtitle">Introduce la cantidad para crear el token</string>
     <string name="withdraw_cashu_create_button">Crear Token</string>
     <string name="withdraw_cashu_result_title">Token Cashu</string>
     <string name="withdraw_cashu_result_subtitle">Comparte este token para retirar</string>
